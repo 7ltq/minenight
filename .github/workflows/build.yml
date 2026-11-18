@@ -1,0 +1,37 @@
+name: Build MineNightAllInOne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build plugin
+        run: mvn -B -DskipTests package
+      - name: Package source ZIP
+        run: |
+          zip -r MineNightAllInOne-source.zip . \
+            -x '.git/*' 'target/*' '.github/*'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MineNightAllInOne-build
+          path: |
+            target/MineNightAllInOne.jar
+            MineNightAllInOne-source.zip
+          if-no-files-found: error
+          retention-days: 14
