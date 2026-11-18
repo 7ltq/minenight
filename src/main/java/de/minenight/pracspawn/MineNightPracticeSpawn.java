@@ -39,8 +39,8 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
         Location location = spawn();
         if (location == null) {
             tell(player, "no-spawn");
-            getLogger().warning("Cannot teleport " + player.getName() + " to spawn: configured world '" +
-                    getConfig().getString("spawn.world", "world") + "' is not loaded. Set the spawn again with /prac spawn set here.");
+            getLogger().warning("Cannot teleport " + player.getName() + ": configured spawn world '" +
+                    getConfig().getString("spawn.world", "world") + "' is not loaded.");
             return;
         }
 
@@ -48,48 +48,64 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
         World targetWorld = location.getWorld();
         int chunkX = location.getBlockX() >> 4;
         int chunkZ = location.getBlockZ() >> 4;
-        boolean targetChunkLoaded = targetWorld.isChunkLoaded(chunkX, chunkZ);
-        boolean insideWorldBorder = targetWorld.getWorldBorder().isInside(location);
-        boolean withinWorldHeight = location.getY() >= targetWorld.getMinHeight()
-                && location.getY() < targetWorld.getMaxHeight();
 
-        player.teleportAsync(location, PlayerTeleportEvent.TeleportCause.COMMAND).whenComplete((success, error) ->
-                Bukkit.getScheduler().runTask(core(), () -> {
-                    if (!player.isOnline()) {
-                        getLogger().warning("Spawn teleport finished after player " + player.getName() + " went offline.");
-                        return;
-                    }
-                    if (error != null) {
-                        Throwable cause = error;
-                        while (cause instanceof CompletionException && cause.getCause() != null) {
-                            cause = cause.getCause();
+        getLogger().info("Preparing spawn teleport for " + player.getName()
+                + ": from=" + format(origin)
+                + " to=" + format(location)
+                + " targetChunk=" + chunkX + "," + chunkZ
+                + " loadedBeforeRequest=" + targetWorld.isChunkLoaded(chunkX, chunkZ));
+
+        try {
+            targetWorld.getChunkAtAsync(location).whenComplete((chunk, chunkError) ->
+                    Bukkit.getScheduler().runTask(core(), () -> {
+                        if (!player.isOnline()) return;
+
+                        if (chunkError != null || chunk == null) {
+                            getLogger().log(Level.SEVERE, "Could not load spawn chunk for " + player.getName()
+                                    + ": " + format(location), chunkError);
+                            tell(player, "no-spawn");
+                            return;
                         }
-                        getLogger().log(Level.SEVERE, "Spawn teleport threw an exception for " + player.getName()
-                                + ". from=" + format(origin)
-                                + " to=" + format(location)
-                                + " targetChunkLoadedBeforeRequest=" + targetChunkLoaded
-                                + " insideWorldBorder=" + insideWorldBorder
-                                + " withinWorldHeight=" + withinWorldHeight, cause);
-                        tell(player, "no-spawn");
-                        return;
-                    }
-                    if (!Boolean.TRUE.equals(success)) {
-                        Location current = player.getLocation();
-                        getLogger().warning("Spawn teleport failed for " + player.getName()
-                                + ": teleportAsync returned false without an exception."
-                                + " from=" + format(origin)
-                                + " current=" + format(current)
-                                + " to=" + format(location)
-                                + " targetChunkLoadedBeforeRequest=" + targetChunkLoaded
-                                + " insideWorldBorder=" + insideWorldBorder
-                                + " withinWorldHeight=" + withinWorldHeight
-                                + " playerWorldUnchanged=" + current.getWorld().equals(origin.getWorld())
-                                + ". This result does not by itself prove that another plugin cancelled the teleport.");
-                        tell(player, "no-spawn");
-                        return;
-                    }
-                    if (notify) tell(player, "arrived");
-                }));
+
+                        if (!targetWorld.isChunkLoaded(chunkX, chunkZ)) {
+                            getLogger().warning("Spawn chunk future completed but chunk is not loaded for "
+                                    + player.getName() + ": " + chunkX + "," + chunkZ);
+                            tell(player, "no-spawn");
+                            return;
+                        }
+
+                        boolean success;
+                        try {
+                            success = player.teleport(location, PlayerTeleportEvent.TeleportCause.COMMAND);
+                        } catch (Throwable error) {
+                            getLogger().log(Level.SEVERE, "Synchronous spawn teleport threw for "
+                                    + player.getName() + " from=" + format(origin)
+                                    + " to=" + format(location), error);
+                            tell(player, "no-spawn");
+                            return;
+                        }
+
+                        if (!success) {
+                            getLogger().warning("Spawn teleport returned false after the destination chunk was loaded."
+                                    + " player=" + player.getName()
+                                    + " from=" + format(origin)
+                                    + " current=" + format(player.getLocation())
+                                    + " to=" + format(location)
+                                    + " chunk=" + chunkX + "," + chunkZ
+                                    + " chunkLoaded=" + targetWorld.isChunkLoaded(chunkX, chunkZ));
+                            tell(player, "no-spawn");
+                            return;
+                        }
+
+                        getLogger().info("Spawn teleport succeeded for " + player.getName()
+                                + " at " + format(player.getLocation()));
+                        if (notify) tell(player, "arrived");
+                    }));
+        } catch (Throwable error) {
+            getLogger().log(Level.SEVERE, "Failed to request spawn chunk for " + player.getName()
+                    + " at " + format(location), error);
+            tell(player, "no-spawn");
+        }
     }
     private String format(Location location) {
         return location.getWorld().getName() + " "
