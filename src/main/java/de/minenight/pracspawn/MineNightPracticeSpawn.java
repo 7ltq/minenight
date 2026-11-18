@@ -16,6 +16,8 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.Locale;
+import java.util.concurrent.CompletionException;
+import java.util.logging.Level;
 
 public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNightModule implements Listener, CommandExecutor {
     private final MiniMessage mini = MiniMessage.miniMessage();
@@ -41,20 +43,58 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
                     getConfig().getString("spawn.world", "world") + "' is not loaded. Set the spawn again with /prac spawn set here.");
             return;
         }
+
+        Location origin = player.getLocation().clone();
+        World targetWorld = location.getWorld();
+        int chunkX = location.getBlockX() >> 4;
+        int chunkZ = location.getBlockZ() >> 4;
+        boolean targetChunkLoaded = targetWorld.isChunkLoaded(chunkX, chunkZ);
+        boolean insideWorldBorder = targetWorld.getWorldBorder().isInside(location);
+        boolean withinWorldHeight = location.getY() >= targetWorld.getMinHeight()
+                && location.getY() < targetWorld.getMaxHeight();
+
         player.teleportAsync(location, PlayerTeleportEvent.TeleportCause.COMMAND).whenComplete((success, error) ->
                 Bukkit.getScheduler().runTask(core(), () -> {
-                    if (!player.isOnline()) return;
+                    if (!player.isOnline()) {
+                        getLogger().warning("Spawn teleport finished after player " + player.getName() + " went offline.");
+                        return;
+                    }
                     if (error != null) {
-                        getLogger().warning("Spawn teleport failed for " + player.getName() + ": " + error.getMessage());
+                        Throwable cause = error;
+                        while (cause instanceof CompletionException && cause.getCause() != null) {
+                            cause = cause.getCause();
+                        }
+                        getLogger().log(Level.SEVERE, "Spawn teleport threw an exception for " + player.getName()
+                                + ". from=" + format(origin)
+                                + " to=" + format(location)
+                                + " targetChunkLoadedBeforeRequest=" + targetChunkLoaded
+                                + " insideWorldBorder=" + insideWorldBorder
+                                + " withinWorldHeight=" + withinWorldHeight, cause);
                         tell(player, "no-spawn");
                         return;
                     }
                     if (!Boolean.TRUE.equals(success)) {
-                        getLogger().warning("Spawn teleport was cancelled for " + player.getName() + ". Check other plugins listening to PlayerTeleportEvent.");
+                        Location current = player.getLocation();
+                        getLogger().warning("Spawn teleport failed for " + player.getName()
+                                + ": teleportAsync returned false without an exception."
+                                + " from=" + format(origin)
+                                + " current=" + format(current)
+                                + " to=" + format(location)
+                                + " targetChunkLoadedBeforeRequest=" + targetChunkLoaded
+                                + " insideWorldBorder=" + insideWorldBorder
+                                + " withinWorldHeight=" + withinWorldHeight
+                                + " playerWorldUnchanged=" + current.getWorld().equals(origin.getWorld())
+                                + ". This result does not by itself prove that another plugin cancelled the teleport.");
+                        tell(player, "no-spawn");
                         return;
                     }
                     if (notify) tell(player, "arrived");
                 }));
+    }
+    private String format(Location location) {
+        return location.getWorld().getName() + " "
+                + String.format(Locale.ROOT, "%.2f %.2f %.2f",
+                location.getX(), location.getY(), location.getZ());
     }
     @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("prac")) {
