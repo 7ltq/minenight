@@ -30,9 +30,9 @@ public final class MineNightAllInOne extends JavaPlugin {
         register("utility", new de.minenight.utility.MineNightUtility());
         register("tpa", new de.minenight.tpa.MineNightTPA());
         register("rtp", new de.minenight.rtp.MineNightRTP());
+        register("void", new de.minenight.voidworld.MineNightVoid());
         register("spawn", new de.minenight.pracspawn.MineNightPracticeSpawn());
         register("rtpqueue", new de.minenight.rtpqueue.MineNightRTPQueue());
-        register("void", new de.minenight.voidworld.MineNightVoid());
         register("kits", new KitModule());
         register("stafftools", new StaffToolsModule());
         if (getServer().getPluginManager().isPluginEnabled("WorldEdit") ||
