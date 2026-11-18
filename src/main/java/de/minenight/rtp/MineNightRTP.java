@@ -258,7 +258,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
             return;
         }
         reply(player, "searching");
-        int attempts = Math.max(1, Math.min(100, getConfig().getInt("teleport.max-attempts", 24)));
+        int attempts = Math.max(1, Math.min(100, getConfig().getInt("teleport.max-attempts", 48)));
         search(player, world, biome, attempts);
     }
 
@@ -325,7 +325,6 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
         for (Material material : List.of(Material.MAGMA_BLOCK, Material.CACTUS, Material.CAMPFIRE, Material.SOUL_CAMPFIRE, Material.POWDER_SNOW)) {
             if (groundType == material || feet.getType() == material || head.getType() == material) return false;
         }
-        if (!feet.getType().isAir() || !head.getType().isAir()) return false;
         if (world.getWorldBorder().isInside(loc) == false) return false;
         return true;
     }
