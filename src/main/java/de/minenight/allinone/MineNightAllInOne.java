@@ -16,6 +16,9 @@ public final class MineNightAllInOne extends JavaPlugin {
 
     @Override public void onEnable() {
         instance = this;
+        TeleportDiagnostics teleportDiagnostics = new TeleportDiagnostics(this);
+        getServer().getPluginManager().registerEvents(teleportDiagnostics, this);
+        getServer().getScheduler().runTask(this, teleportDiagnostics::dumpRegisteredListeners);
         register("perms", new de.minenightperms.MineNightPerms());
         register("tab", new de.minenight.tab.MineNightTab());
         register("performance", new de.minenight.performance.MineNightPerformance());
