@@ -1,0 +1,19 @@
+MineNight All-in-One 1.6.3 - IP-based Alt Lookup
+
+/altlookup <player> - staff only
+
+Configuration: plugins/MineNightAllInOne/moderation/config.yml
+  ip-detection:
+    enabled: true
+    auto-ban-matching-ips: true
+    exempt-uuids: []
+
+If an incoming player matches the last recorded IP hash of a player with an active ban,
+the incoming account inherits the same ban deadline (including permanent bans).
+The inherited ban is cleared when its source ban is manually removed or expires.
+
+NOTE: Shared IP does not prove account ownership. Siblings, schools, VPNs and
+shared networks may share IP addresses. Review /altlookup results before
+assuming two names belong to one player.
+
+Build by running build.bat in the MineNightAllInOne folder.

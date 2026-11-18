@@ -1,0 +1,9 @@
+enabled: true
+# Remove only entities that can be reliably attributed to the teleporting/leaving player.
+on-teleport: true
+on-disconnect: true
+on-respawn: true
+# Avoid running cleanup for tiny teleports (e.g. position correction).
+minimum-teleport-distance-blocks: 2
+# Bound the memory used for entity IDs per player.
+max-tracked-per-player: 1024

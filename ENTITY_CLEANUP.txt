@@ -1,0 +1,20 @@
+MineNight 1.7.6 - entity cleanup
+
+The plugin removes player-attributed entities on teleport (2+ blocks or different world),
+disconnect, or respawn: placed crystals/other placeable entities, projectiles (including
+ender pearls and arrows), and manually dropped items. Entities owned by others stay.
+
+XP orbs are not automatically removed on teleport/disconnect because the server does not
+provide reliable ownership for all orbs. Use Paper/Spigot XP orb merging settings for
+XP performance. Do not remove all nearby XP: it would delete other players' XP.
+
+This system does not force-load chunks to find entities. Entities already unloaded are
+not removed; their tracking references are pruned. Items normally despawn after 10 seconds
+(200 ticks) in worlds covered by the MineNightPerformance module.
+
+Configuration: plugins/MineNightAllInOne/entitycleanup/config.yml
+Item configuration: plugins/MineNightAllInOne/performance/config.yml
+Spawn configuration: plugins/MineNightAllInOne/spawn/config.yml
+
+On join the player is still teleported to the configured spawn but receives no
+'Teleported to spawn.' confirmation. Manual /spawn still displays the message.

@@ -1,0 +1,61 @@
+MineNight All-in-One v1.3.0
+
+Build on Windows: run build.bat with JDK 25 installed.
+Replace old MineNightAllInOne.jar, restart your Paper 1.21.11 server.
+RTP icons: previous default spawn-egg icons are automatically upgraded to terrain blocks on startup. Custom icons are preserved.
+Use /rtpreload or restart after changing RTP config.
+PerPlayerKit config is a separate download. Replace plugins/PerPlayerKit/config.yml with it and restart the server.
+Tab suggestions work for MineNight commands; third-party commands need tab support from those plugins.
+
+MineNight All-in-One v1.4.0 additions:
+/back returns to your saved last death location (except during RTPQueue duels).
+/announcement <message> broadcasts a center-screen title to all online players.
+Command suggestion filtering is configured in plugins/MineNightAllInOne/utility/config.yml.
+Namespaced fallback commands remain supported by the server but are hidden from tab suggestions.
+Ban expiry messages differ from manual unban notifications.
+
+
+Version 1.7.7 spawn behavior:
+Players can walk into and out of protected schematic regions normally. Spawn protection still prevents building, breaking, protected interactions, projectile use and PvP in the region. /tpa and /tpahere can place players at the requested destination without trapping them there.
+
+
+Version 1.7.8 spawn border:
+Players can walk and move around freely inside the protected spawn schematic. Touching one of the outermost horizontal border blocks, or moving outside the protected schematic footprint, returns the player to the configured practice spawn (/prac spawn set here). /tpa and /tpahere arrivals are still accepted; touching the border after arrival triggers the return. Schematic admins with Staff Mode enabled are exempt.
+
+Version 1.7.9 spawn and XP notes:
+- Join always teleports players to the configured practice spawn. /spawn uses the same saved location.
+- Intentional teleports are ignored by the walking-only spawn-border handler; only walking into the horizontal border triggers the return.
+- If the configured spawn world is not loaded, run /prac spawn set here while standing at the correct spawn location.
+- XP-orb clumping is a Paper/Spigot server setting, not a MineNight command. Follow PAPER_XP_CLUMPING.txt and restart the server.
+
+
+MEDIA ROLE UPDATE (v1.8.3)
+The Media role is migrated automatically when MineNightPerms starts. Its
+nametag shows only the pink still-camera symbol, cyan plus sign, and pink
+player name. The word "Media" remains the role's management name only.
+No manual config edit is required.
+
+
+MEDIA NAMETAG SPACING UPDATE (v1.8.4)
+The Media prefix now uses Minecraft Java's built-in camera glyph U+E10D,
+followed immediately by the cyan plus. The standard single gap before the
+pink player name remains. Existing Media prefix settings migrate on startup.
+
+
+MEDIA NAMETAG SPACING UPDATE (v1.8.5)
+The Media nametag is now exactly 📹+PlayerName. There are no spaces between the camera, plus, or player name. Other roles retain their normal one-space separator. This is applied in both the custom nametag and vanilla scoreboard fallback.
+
+
+MEDIA NAMETAG SPACING UPDATE (v1.8.5)
+The Media nametag is exactly 📹+PlayerName. There are no inserted spaces between the camera, plus, or player name. Other roles retain their normal one-space separator. The same rule applies to both the custom TextDisplay nametag and the vanilla scoreboard fallback.
+
+
+MEDIA PLUS GLYPH UPDATE (v1.8.6)
+The Media nametag's plus now uses a standalone literal ASCII "+" component in the default Minecraft font, colored cyan. It is not rendered as an icon or special glyph and has no added scaling or emphasis. Camera, plus, and player name remain adjacent.
+
+
+Version 1.8.9 biome-world integration:
+Install MineNightBiomeGen 1.0.3 alongside MineNightAllInOne 1.8.9.
+MineNight RTP and /rtpq automatically resolve mine_plains, mine_snow, mine_desert,
+mine_mushroom, mine_badlands and mine_end. Existing old RTP config values remain supported.
+ /back stores the previous command/plugin teleport location and death location.

@@ -1,0 +1,21 @@
+MineNightPerms Color Picker
+
+Open /mnperms, choose Manage Groups, select a role, then choose Role Color or Name Color.
+The color picker first asks for a category:
+- Gradients: multi-color MiniMessage gradients.
+- Solid Colors: regular named or HEX colors.
+
+The same preset catalog is available for both Role Color and Name Color. The settings remain independent, so a role prefix can use one color while the player's name uses another.
+
+Screenshot-inspired presets included:
+- Owner Cyan (#16ACCF)
+- SR Admin Red (#E63B0C)
+- SR Admin Name Gold (#E9B833)
+- Napooo Aqua (#01FCE7)
+- Dev Admin Purple (purple-to-magenta gradient)
+- SR Mod Green (#02F939)
+
+Media role colors:
+- Camera (Minecraft Java glyph U+E10D): Media Pink (#E52DBB)
+- Plus symbol: Media Cyan (#00C8F0)
+- Player name: Media Pink (#E52DBB)

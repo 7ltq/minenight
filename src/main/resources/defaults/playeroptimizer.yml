@@ -1,0 +1,9 @@
+enabled: true
+evaluation-interval-seconds: 20
+view-distance:
+  minimum: 5
+  maximum: 8
+thresholds:
+  reduce-above-mspt: 42.0
+  restore-below-mspt: 32.0
+  consecutive-samples: 3

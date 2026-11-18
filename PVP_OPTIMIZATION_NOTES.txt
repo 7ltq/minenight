@@ -1,0 +1,12 @@
+MineNight All-in-One v1.7.5 PvP/Performance notes
+
+/vanish - staff-only toggle. Visible to staff with minenight.staff.seevanish. Resets on disconnect/restart.
+/totemcheck <player> - staff-only. Consumes one offhand totem, sends the totem animation, and measures until a replacement appears in offhand (max 200 ticks); 30 sec cooldown per target. This is a simulated, non-damaging totem pop and a single result is NOT evidence of automation.
+
+Crystal / Anchor / Consumable (Food) / Crossbow / Pearl optimizer mods on Modrinth usually use CLIENT-SIDE prediction, and cannot be replicated by an ordinary Paper plugin for vanilla clients. This release does not change those vanilla mechanics or claim to have ported the five client mods. Their latency effects depend on ping and client rendering, not primarily plugin RAM.
+
+Performance change implemented: the existing MineNightTotemMonitor loops over observed samples instead of all online players each tick. Its 1-tick scheduled task remains for live observations.
+
+For further work, collect a 60-second Spark profile during a busy crystal/anchor fight, MSPT and heap data, then optimize measured hot spots. Do not force System.gc() or alter projectile/explosion logic without evidence: it can worsen latency and change PvP behavior.
+
+Testing: Source/archive checks only. Build with build.bat and run on staging before replacing the production jar. WorldEdit or FAWE dependency remains optional for schematics.

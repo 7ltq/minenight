@@ -1,0 +1,24 @@
+regear:
+  combat-delay-seconds: 10
+  whitelist:
+    - ENDER_PEARL
+    - END_CRYSTAL
+    - OBSIDIAN
+    - GLOWSTONE
+    - SPLASH_POTION
+    - NETHERITE_PICKAXE
+    - NETHERITE_SWORD
+    - SHIELD
+    - NETHERITE_AXE
+    - GOLDEN_APPLE
+    - EXPERIENCE_BOTTLE
+    - TIPPED_ARROW
+    - CROSSBOW
+    - BOW
+
+sounds:
+  kit-loaded:
+    enabled: true
+    sound: ENTITY_PLAYER_LEVELUP
+    volume: 0.7
+    pitch: 1.7

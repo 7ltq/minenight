@@ -1,0 +1,8 @@
+MineNight Media Tablist
+
+Media player list names use the same compact sequence as the in-world nametag:
+- Pink video-camera glyph: 📹
+- Cyan normal plus character: +
+- Pink player name
+
+There are no spaces between the camera, plus, and player name. Other roles continue using the configured tab player-name template.

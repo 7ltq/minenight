@@ -1,0 +1,43 @@
+appeal:
+  discord-url: https://discord.com/
+ip-detection:
+  enabled: true
+  auto-ban-matching-ips: true
+  exempt-uuids: []
+reasons:
+  cheating:
+    label: Cheating
+    ban-duration: 7d
+    mute-duration: 7d
+  macros:
+    label: Macros
+    ban-duration: 7d
+    mute-duration: 7d
+  ban_evading:
+    label: Ban Evading
+    ban-duration: 14d
+    mute-duration: 14d
+  racist_slurs:
+    label: Racist Slurs
+    ban-duration: 1d
+    mute-duration: 1d
+  lying_to_staff:
+    label: Lying to Staff
+    ban-duration: 3d
+    mute-duration: 1d
+  harassment:
+    label: Harassment
+    ban-duration: 3d
+    mute-duration: 1d
+  spam:
+    label: Spam
+    ban-duration: 1d
+    mute-duration: 1h
+  exploiting:
+    label: Exploiting
+    ban-duration: 7d
+    mute-duration: 1d
+  inappropriate_behavior:
+    label: Inappropriate Behavior
+    ban-duration: 3d
+    mute-duration: 1d

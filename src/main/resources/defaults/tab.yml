@@ -1,0 +1,33 @@
+settings:
+  update-ticks: 40
+  tab-enabled: true
+  tab-player-names: true
+  minenightperms-prefixes: true
+  luckperms-prefixes: true
+  luckperms-suffixes: false
+  motd-enabled: true
+  motd-max-players: -1
+
+tab:
+  header:
+    - '<gray>━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    - '<bold><gradient:#7B6CA5:#BBC8D9>MINENIGHT</gradient></bold>'
+    - '<gray>Crystal PvP <dark_gray>• <white>Practice'
+    - ''
+    - '<gray>Online: <white>{online}<dark_gray>/<white>{max} <dark_gray>• <gray>Ping: <white>{ping}ms'
+  footer:
+    - ''
+    - '<gray>TPS: <white>{tps} <dark_gray>• <gray>Players: <white>{online}'
+    - '<gray>Welcome to <bold><gradient:#8E82B1:#D1D7E2>MineNight</gradient></bold>'
+    - '<gray>━━━━━━━━━━━━━━━━━━━━━━━━━━'
+  player-name: '{prefix}{player}{suffix}'
+
+motd:
+  lines:
+    - '    <bold><gradient:#8175AE:#D5DCE8>MINENIGHT</gradient></bold> <dark_gray>• <gray>CRYSTAL PVP'
+    - '  <white>Practice <dark_gray>• <gray>Crystal PvP <dark_gray>[<white>{online}<dark_gray>/<white>{max}<dark_gray>]'
+
+actionbar:
+  enabled: true
+  interval-ticks: 40
+  text: "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>"

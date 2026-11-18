@@ -1,0 +1,33 @@
+MineNight Media Role
+====================
+
+Built-in group key: media
+Display name in administration menus: Media
+Nametag prefix: <#E52DBB>📹</#E52DBB><#00C8F0>+</#00C8F0>
+Camera: exact video-camera emoji U+1F4F9, pink #E52DBB
+Plus: literal default-font + sign, cyan #00C8F0 (built as its own Adventure text component, not MiniMessage markup)
+Spacing: no gap between camera and plus; no gap between plus and player name
+Player name color: #E52DBB
+Priority: 25
+
+The in-world nametag intentionally does NOT show the word MEDIA. It shows
+only the pink video-camera symbol, the cyan plus sign, and the pink player name.
+The video-camera symbol and plus are formatted as one compact prefix so both
+use the same text baseline. The old private-use camera glyph is migrated away.
+
+On startup, MineNightPerms migrates an older Media prefix to the exact requested
+video-camera emoji and clears a separate legacy emoji field to prevent duplicate
+or extra spacing. Default white role/name colors are migrated to pink. Other
+custom administrator color choices are preserved. The group display name stays
+Media in the management GUI.
+
+Assign a player from console or as a MineNightPerms administrator:
+/mnperms player set role <player> media
+
+The role can also be assigned through /minenightperms -> Assign Roles.
+The role is not automatically assigned to any player.
+
+Nametag rendering implementation (v1.8.6):
+- The camera and plus are built as separate Adventure components.
+- The plus is the exact plain ASCII character "+" using the default Minecraft font, colored cyan.
+- No bold, italic, scale, custom glyph, or MiniMessage decoration is applied to the plus.

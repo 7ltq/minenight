@@ -1,0 +1,22 @@
+MineNight - XP orb clumping (Paper 1.21.11)
+
+This is a server setting, not a MineNight command.
+
+1. Stop the server.
+2. Open the server root spigot.yml (not a plugin config).
+3. Under the existing world-settings: default: section, add or change only:
+
+    merge-radius:
+      exp: 3.0
+
+Keep existing keys and indentation in the file; do not replace the entire spigot.yml.
+If a world-specific section overrides merge-radius.exp, update that world section too.
+4. Save the file and fully restart the server.
+
+The value is a block radius for combining XP orbs at spawn. It does not make XP fly into players from farther away; it reduces the number of separate XP-orb entities. Paper's entities.behavior.experience-merge-max-value is a cap on the merged orb's XP value, not the merge radius.
+
+
+MineNight All-in-One 1.8.0 teleport compatibility fix:
+Player-initiated MineNight teleports now explicitly use TeleportCause.COMMAND,
+matching the successful vanilla minecraft:tp command path. This covers join spawn,
+/spawn, TPA, RTP, RTP queue, /back, and the spawn-border return teleport.

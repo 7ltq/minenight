@@ -1,0 +1,8 @@
+MineNight All-in-One v1.8.8 - Shared Kitroom inventory fix
+
+Players can now freely rearrange items in their own inventory while /kitroom is open.
+The upper 45 shared-template slots remain read-only: clicking an item gives a copy and does not consume the template.
+Shift-click and collect-to-cursor transfers are blocked so player items cannot be inserted into the shared template and template items cannot be mass-collected.
+Drags fully contained in the player's own inventory are allowed. Drags touching the upper shared-template inventory remain blocked.
+
+Build with build.bat (Windows) or build.sh (Linux/macOS) using JDK 21 or newer and Maven 3.9.11 or newer.

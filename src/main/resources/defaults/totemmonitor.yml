@@ -1,0 +1,8 @@
+enabled: true
+alerts:
+  staff: true
+checks:
+  minimum-samples: 10
+  maximum-average-delay-ticks: 3
+  maximum-variance-ticks-squared: 0.2
+  consecutive-windows: 4

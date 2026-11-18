@@ -1,0 +1,29 @@
+settings:
+  max-search-attempts: 40
+  min-radius: 500
+  max-radius: 5000
+  generate-chunks: true
+  maximum-ground-height-difference: 3
+  auto-respawn-loser: true
+  use-rtp-plugin-worlds: true
+  require-practice-spawn: true
+worlds:
+  plain: plains_world
+  snow: snow_world
+  desert: desert_world
+  mushroom: mushroom_world
+  badlands: badlands_world
+  end: end_world
+messages:
+  prefix: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» '
+  queued: '<gray>Searching for a PvP opponent... <dark_gray>(/rtpq to leave)'
+  left: '<gray>You left the queue.'
+  preparing: '<gray>Opponent found. Preparing arena...'
+  matched: '<gray>Opponent: <white>{opponent}'
+  no-worlds: '<red>No RTP worlds are currently loaded.'
+  no-location: '<red>No safe 1v1 location was found. Try /rtpq again.'
+  no-spawn: '<red>Practice spawn not configured. Use /prac spawn set here.'
+  teleport-failed: '<red>Unable to start the duel. Try /rtpq again.'
+  opponent-left: '<gray>Your opponent disconnected.'
+  player-only: '<red>This command is only for players.'
+  no-permission: '<red>You do not have permission.'

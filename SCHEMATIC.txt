@@ -1,0 +1,18 @@
+MineNight Schematic module 1.6.5
+
+Dependency: WorldEdit or compatible FastAsyncWorldEdit. Install a compatible release for Paper 1.21.11.
+
+Put .schem or .schematic in plugins/MineNightAllInOne/mnschematics/
+/mnschematic load <name>
+/mnschematic paste
+/mnschematic <name> protect
+/mnschematic staff mode (toggle)
+/mnschematic list
+
+The stored schematic region comes from the exact clipboard bounds and paste coordinates, not a manual WorldEdit selection.
+Protected regions are persistent in plugins/MineNightAllInOne/mnschematic/regions.yml.
+Break/place, explosions, pistons, fire, fluids, buckets, protected interactions, pearls and XP bottles are blocked. Players can freely walk out of the region and use normal command/plugin teleports, including /tpa and /tpahere. Walking is never restricted by spawn protection.
+
+Important limitations: Server console or other plugins can still change blocks directly; normal Bukkit event protection cannot prevent every possible plugin-driven WorldEdit or direct NMS modification. The protection is cuboid, not an arbitrary shape. Only the last paste in the current session can be protected.
+
+Use /prac spawn set here to set a spawn position inside the protected area.

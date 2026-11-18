@@ -1,0 +1,21 @@
+items:
+  enabled: true
+  despawn-seconds: 10
+  excluded-worlds: []
+  excluded-materials: []
+
+block-drops:
+  disabled: true
+  excluded-worlds: []
+
+mobs:
+  block-spawning: true
+  excluded-worlds: []
+  allow-custom-spawns: false
+
+commands:
+  block-plugin-list: true
+  hide-plugin-list-suggestions: true
+
+messages:
+  no-permission: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <red>You do not have permission to use this command.'

@@ -1,0 +1,61 @@
+announcement:
+  title: '<gradient:#8175AE:#D5DCE8><bold>Announcement</bold></gradient>'
+  subtitle-format: '<white>{message}'
+  duration-seconds: 5
+  sound: true
+command-suggestions:
+  enabled: true
+  hide-namespaced: true
+  allowed-namespaced:
+    - fancynpcs:npc
+    - fancynpc:npc
+  hide-vanilla: true
+  hidden-vanilla-commands:
+    - advancement
+    - attribute
+    - bossbar
+    - clone
+    - data
+    - datapack
+    - debug
+    - defaultgamemode
+    - difficulty
+    - enchant
+    - execute
+    - fill
+    - fillbiome
+    - forceload
+    - function
+    - gamerule
+    - item
+    - jfr
+    - loot
+    - perf
+    - place
+    - recipe
+    - reload
+    - return
+    - ride
+    - schedule
+    - scoreboard
+    - seed
+    - setblock
+    - setidletimeout
+    - setworldspawn
+    - spawnpoint
+    - spreadplayers
+    - stopsound
+    - tag
+    - team
+    - teammsg
+    - teleport
+    - tick
+    - time
+    - title
+    - trigger
+    - weather
+    - worldborder
+
+links:
+  discord: "https://discord.com/invite/mXjqNYF4b6"
+  website: "https://minenight.de"

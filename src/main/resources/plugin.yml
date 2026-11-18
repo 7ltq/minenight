@@ -1,0 +1,255 @@
+name: MineNightAllInOne
+version: '1.8.12'
+main: de.minenight.allinone.MineNightAllInOne
+api-version: '1.21.11'
+authors:
+- 7ltq x codex
+description: MineNight practice server core features in one plugin
+softdepend:
+- Vault
+- LuckPerms
+- voicechat
+- WorldEdit
+- FastAsyncWorldEdit
+commands:
+  vanish:
+    description: Toggle staff invisibility to regular players.
+    usage: /vanish
+    permission: minenight.staff.vanish
+  totemcheck:
+    description: Measure the time until an offhand totem is re-equipped after a simulated pop.
+    usage: /totemcheck <player>
+    permission: minenight.staff.totemcheck
+  mnschematic:
+    description: Load, paste and protect schematic-based spawn regions.
+    usage: /mnschematic load <name> | paste | <name> protect | staff mode | list
+    permission: minenight.schematic.admin
+  kit:
+    description: Open the nine-kit GUI or load a kit.
+    usage: /kit [1-9]
+    permission: minenight.kits.use
+  k1:
+    aliases: [kit1]
+    description: Load kit 1
+    permission: minenight.kits.use
+  k2:
+    aliases: [kit2]
+    description: Load kit 2
+    permission: minenight.kits.use
+  k3:
+    aliases: [kit3]
+    description: Load kit 3
+    permission: minenight.kits.use
+  k4:
+    aliases: [kit4]
+    description: Load kit 4
+    permission: minenight.kits.use
+  k5:
+    aliases: [kit5]
+    description: Load kit 5
+    permission: minenight.kits.use
+  k6:
+    aliases: [kit6]
+    description: Load kit 6
+    permission: minenight.kits.use
+  k7:
+    aliases: [kit7]
+    description: Load kit 7
+    permission: minenight.kits.use
+  k8:
+    aliases: [kit8]
+    description: Load kit 8
+    permission: minenight.kits.use
+  k9:
+    aliases: [kit9]
+    description: Load kit 9
+    permission: minenight.kits.use
+  copy:
+    description: Copy a saved kit from another player.
+    usage: /copy kit <player> <1-9>
+    permission: minenight.kits.use
+  copykit:
+    description: Copy a player kit into your inventory.
+    usage: /copykit <player> <1-9>
+    permission: minenight.kits.use
+  regear:
+    description: Receive a regear shulker.
+    permission: minenight.kits.use
+  kitroom:
+    description: Open the shared three-page kitroom item selection.
+    usage: /kitroom
+    permission: minenight.kits.use
+  staffkitroom:
+    description: Edit the shared three-page kitroom for all players.
+    usage: /staffkitroom
+    permission: minenight.kits.staff
+  playeroptimizer:
+    description: Show player view distance optimization status or reload configuration.
+    usage: /playeroptimizer [reload]
+    permission: minenight.playeroptimizer.admin
+  totemmonitor:
+    description: MineNight AutoTotem pattern monitor (staff alerts only).
+    usage: /totemmonitor [reload]
+    permission: minenight.totemmonitor.admin
+  back:
+    description: Return to your last death location.
+    usage: /back
+    permission: minenight.back
+  announcement:
+    description: Broadcast a screen title announcement.
+    usage: /announcement <message>
+    permission: minenight.announcement
+  ban:
+    description: Ban a player with a reason and optional duration.
+    usage: /ban <player> <reason_key> [duration]
+    permission: minenight.moderation.staff
+  unban:
+    description: Unban a player with a reason.
+    usage: /unban <player> <reason>
+    permission: minenight.moderation.staff
+  pardon:
+    description: Redirect to MineNight unban.
+    permission: minenight.moderation.staff
+  mute:
+    description: Mute player text and Simple Voice Chat.
+    usage: /mute <player> <reason_key> [duration]
+    permission: minenight.moderation.staff
+  unmute:
+    description: Unmute a player.
+    usage: /unmute <player>
+    permission: minenight.moderation.staff
+  altlookup:
+    description: Show possible linked accounts based on the last known connection IP.
+    usage: /altlookup <player>
+    permission: minenight.moderation.staff
+  banlist:
+    description: List MineNight active bans.
+    permission: minenight.moderation.staff
+  settings:
+    description: Open your personal chat and teleport request preferences.
+    usage: /settings
+  minenightperms:
+    description: MineNightPerms main command
+    aliases:
+    - mnperms
+    usage: /minenightperms
+  minenighttab:
+    description: Manage MineNight tab and MOTD
+    usage: /minenighttab reload
+    aliases:
+    - mntab
+    permission: minenighttab.admin
+  mnperf:
+    description: View performance statistics, reload settings, or control mob spawning.
+    usage: /mnperf [reload|mobs on|mobs off|mobs status|drops on|drops off|drops status]
+  nomobs:
+    description: Enable or disable mob-free mode without changing game difficulty.
+    usage: /nomobs <on|off|status>
+  noblockdrops:
+    description: Enable or disable block item drops from mining and explosions.
+    usage: /noblockdrops <on|off|status>
+  'no':
+    description: Control block drops using /no block drop.
+    usage: /no block drop <on|off|status>
+  tpa:
+    description: Ask to teleport to another player.
+    usage: /tpa <player>
+    permission: tpaplugin.tpa
+  tpahere:
+    description: Ask another player to teleport to you.
+    usage: /tpahere <player>
+    permission: tpaplugin.tpa
+  tpaccept:
+    description: Accept a pending teleport request.
+    usage: /tpaccept [player]
+    permission: tpaplugin.tpa
+  tpauto:
+    description: Toggle automatic acceptance of incoming teleport requests.
+    usage: /tpauto
+    permission: tpaplugin.tpa
+  tpadecline:
+    description: Decline a pending teleport request.
+    usage: /tpadecline [player]
+    permission: tpaplugin.tpa
+  discord:
+    description: Show a clickable link to MineNight Discord
+    usage: /discord
+    permission: minenight.links.use
+  website:
+    description: Show a clickable link to the MineNight website
+    usage: /website
+    permission: minenight.links.use
+  rtp:
+    description: Random teleport to Plains by default, or select a biome
+    usage: /rtp [plains|snow|desert|mushroom|badlands]
+    permission: minenightrtp.use
+  rtpgui:
+    description: Open the 3-row RTP world selection GUI
+    usage: /rtpgui
+    permission: minenightrtp.use
+  rtpreload:
+    description: Reload MineNightRTP configuration
+    usage: /rtpreload
+    permission: minenightrtp.admin
+  rtpq:
+    usage: /rtpq
+    permission: minenightrtpq.use
+  prac:
+    usage: /prac spawn set here
+    permission: minenightspawn.admin
+  spawn:
+    usage: /spawn
+    permission: minenightspawn.use
+  void:
+    description: Teleport to the saved Void lobby.
+    usage: /void [set|status|reload]
+    permission: minenightvoid.teleport
+permissions:
+  minenight.staff.vanish:
+    default: op
+  minenight.staff.seevanish:
+    default: op
+  minenight.staff.totemcheck:
+    default: op
+  minenight.links.use:
+    default: true
+  minenight.schematic.admin:
+    default: op
+  minenight.kits.use:
+    default: true
+  minenight.kits.staff:
+    default: op
+  minenight.playeroptimizer.admin:
+    default: op
+  minenight.totemmonitor.alerts:
+    default: op
+  minenight.totemmonitor.admin:
+    default: op
+  minenight.back:
+    default: true
+  minenight.announcement:
+    default: op
+  minenight.moderation.staff:
+    default: op
+  minenightperms.admin:
+    description: Full access to MineNightPerms commands and GUI
+    default: op
+  minenighttab.admin:
+    default: op
+  tpaplugin.tpa:
+    default: true
+    description: Allows players to send and answer teleport requests.
+  minenightrtp.use:
+    default: true
+  minenightrtp.admin:
+    default: op
+  minenightrtpq.use:
+    default: true
+  minenightspawn.admin:
+    default: op
+  minenightspawn.use:
+    default: true
+  minenightvoid.teleport:
+    default: true
+  minenightvoid.admin:
+    default: op

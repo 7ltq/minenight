@@ -1,0 +1,181 @@
+MineNight All-in-One 1.5.2
+- Defaults to disabled block drops, and suppresses block item spawns immediately after break/explosion events.
+- New optional built-in basic AutoTotem pattern monitor. Not the full TotemGuard plugin and no packet-level detection. Alerts only; no bans.
+- Config: plugins/MineNightAllInOne/performance/config.yml (block-drops.disabled: true)
+- Config: plugins/MineNightAllInOne/totemmonitor/config.yml
+- Hotbar IP: plugins/MineNightAllInOne/tab/config.yml -> actionbar.text
+- If a saved config still has disabled: false, set it to true or run /noblockdrops on.
+- Falling blocks, custom plugin item spawns, player inventory drops are not universally suppressed.
+- Test on a backup server.
+
+
+1.6.2
+- Regear shulker is single-use and disappears after opening.
+- /kit GUI redesigned closer to the requested chest/ender-eye layout.
+- Kitrooms now have 3 pages per kit.
+
+1.6.3
+- /altlookup <player> lists accounts sharing the last recorded IP fingerprint.
+- On login, an alt matching an actively banned account inherits the same ban expiry.
+- When the source account is unbanned, inherited sanctions are cleared.
+- Settings: moderation/config.yml -> ip-detection.enabled, ip-detection.auto-ban-matching-ips, ip-detection.exempt-uuids.
+
+1.6.6
+- Added configurable sound when a saved kit is loaded.
+- Schematic module is loaded only if WorldEdit or FAWE is available.
+- Avoids disabling modules that were not successfully enabled.
+
+1.6.7
+- Renamed custom /schematic commands to /mnschematic to avoid the WorldEdit /schematic collision.
+- Tab completion for /mnschematic remains enabled (load, paste, list, staff mode, protect and schematic files).
+
+1.6.8
+- Kit chest right-click opens read-only saved loadout preview, with Save Inventory to Kit action.
+- Kit ender-eye opens personal per-kit 27-slot enderchest, persists independently per player.
+- /kitroom is now a single shared 3-page item selection for all players.
+- /staffkitroom edits shared templates for all players, with per-page persistence.
+- First legacy kitroom pages migrated to shared pages if available.
+
+1.6.9
+- No player combat in protected schematic regions.
+- Block /bot commands inside protected schematic regions.
+- Show public permission-default commands such as /kit, /rtp, /settings correctly in client suggestions.
+
+1.7.0
+- Restores gradient nametags with one-time migration.
+- Uses Paper native command visibility and permission checks for ordinary commands.
+
+1.7.2
+- Added public /discord and /website clickable link commands.
+- /rtp defaults to Plains and accepts plains, snow, desert, mushroom, badlands.
+- /rtp tab completion for supported biomes.
+
+1.7.3
+- Protected schematic areas still prevent walking out, but allow command/plugin teleports out.
+- Avoid treating PlayerTeleportEvent as walking movement.
+- Ender pearl teleports remain blocked from protected areas.
+
+1.7.4
+- Loading saved kits restores max health, 20 hunger and 20 saturation. Potion effects are preserved.
+
+1.7.5
+- Staff /vanish hides staff members from normal players, including tab visibility.
+- /totemcheck <player> safely simulates an offhand totem pop (consumes one totem but causes no damage) and measures re-equip ticks; staff-only, cooldown and timeout.
+- The TotemMonitor per-tick loop now only checks players with an active recorded pop rather than scanning all online players.
+- No claims of built-in client-side Crystal/Anchor/Food/Crossbow/Pearl optimizers: these require client prediction and cannot be replicated as a vanilla Paper plugin.
+
+v1.7.6
+- Join teleport to the configured practice spawn is silent; /spawn still shows its confirmation.
+- Entity cleanup on successful teleport, disconnect and respawn for tracked player-owned
+  placed entities (including crystals), launched projectiles (including pearls) and
+  manually dropped items. Does not remove other players' entities or scan entire worlds.
+- Unattributed XP orbs are not deleted: Minecraft/Paper does not reliably expose an owner
+  for all XP orbs, and deleting nearby orbs could steal other players' XP.
+- Default item despawn changed to 10 seconds (200 server ticks). Existing config values
+  of 15 seconds are upgraded to 10; custom non-15 values are retained.
+- Bounded owner entity IDs; pruning only runs while entities are tracked.
+
+
+MineNight All-in-One 1.7.7
+- Fixed schematic spawn protection trapping players inside the protected region.
+- Removed the movement-lock handler: players can now walk out of spawn normally.
+- /tpa and /tpahere teleports remain allowed; the target can leave the protected region on foot.
+- Block/place, interaction, projectile and combat protection inside the schematic region remains active.
+
+
+MineNight All-in-One 1.7.8
+- Added a horizontal spawn-border rule based on the protected schematic footprint.
+- Players can move freely inside spawn; touching the outermost border blocks or crossing outside returns them to the configured practice spawn.
+- /tpa and /tpahere arrivals are still allowed; players are returned when they touch the border or try to walk out.
+- Border detection is event-driven and only checks block-coordinate changes; no repeating task or world/entity scan.
+- Staff with schematic admin permission and Schematic Staff Mode are exempt.
+
+
+MineNight All-in-One 1.7.9
+- Fixed spawn-border handling so intentional teleports (join spawn, /spawn, /tpa and /tpahere) are not treated as walking through the border.
+- Prevented the border return task from cancelling its own return-to-spawn teleport.
+- Join teleport now always runs, even when an older config has teleport-on-join disabled.
+- Added explicit console diagnostics when the configured spawn world is unavailable or a spawn teleport fails.
+- XP clumping is configured in Paper/Spigot server configuration, not through a MineNight command; see PAPER_XP_CLUMPING.txt.
+
+
+MineNight All-in-One v1.8.1
+- Reorganized MineNightPerms color selection into separate Gradients and Solid Colors categories.
+- Both Role Color and Name Color use the same complete preset catalog.
+- Added Owner Cyan, SR Admin Red, SR Admin Name Gold, Napooo Aqua, Dev Admin Purple and SR Mod Green presets based on the supplied screenshots.
+- Color selections continue to apply independently to the role prefix and player name in chat and nametags.
+
+
+MineNight All-in-One v1.8.2
+- Added a built-in Media role if it does not already exist in the saved MineNightPerms configuration.
+- Media prefix uses a pink video-camera symbol followed by a cyan plus; player names use the matching pink.
+- Media role is available in the group editor and player role assignment GUI.
+- Added Media Pink and Media Cyan presets to the Solid Colors picker.
+- Existing Media role settings are preserved on reload and restart.
+
+
+MineNight All-in-One v1.8.3
+- Changed the Media prefix from the video-camera glyph to the still-camera glyph (📷), matching the supplied reference.
+- The Media nametag now displays only the pink camera, cyan plus, and pink player name; it does not display the word MEDIA.
+- Added startup migration for existing Media groups with a blank/legacy prefix and default white colors, so existing servers receive the corrected display without manually recreating the role.
+- Existing non-default administrator color choices are preserved.
+
+
+MineNight All-in-One v1.8.4
+- Replaced the unsupported emoji camera with Minecraft Java's built-in camera glyph U+E10D.
+- Removed the extra space between the camera and cyan plus; the normal small gap before the player name remains.
+- Existing Media groups are migrated automatically to the corrected compact prefix on startup.
+- Camera and plus now share the same native Minecraft font metrics and baseline.
+
+
+MineNight All-in-One 1.8.4
+- Media nametag now uses the exact requested video-camera emoji (📹), not the
+  previous private-use camera glyph.
+- Camera is pink (#E52DBB), plus is cyan (#00C8F0), and player name is pink.
+- Camera and plus are a compact single prefix with no gap between symbols; the
+  name follows after one normal space.
+- Legacy Media emoji field is cleared on startup to prevent duplicate symbols.
+
+
+MineNight All-in-One v1.8.5
+- Removed the separator after the Media plus sign: its nametag is now exactly 📹+PlayerName, with no spaces between any of the three parts.
+- Other roles keep their normal single space before player names.
+- Applied consistently to the custom TextDisplay nametag and the vanilla scoreboard fallback.
+
+
+MineNight All-in-One v1.8.6
+- Media nametag plus is now rendered as a literal standalone ASCII "+" Adventure component.
+- The plus uses the default Minecraft font and cyan color #00C8F0.
+- No custom glyph, scale, bold, italic, or MiniMessage formatting is applied to the plus.
+- Camera remains the exact 📹 emoji in pink; player name remains pink.
+- Camera, plus, and player name remain adjacent with no inserted spaces.
+- Applied to both the TextDisplay nametag and vanilla scoreboard fallback.
+
+
+MineNight All-in-One v1.8.7
+- Media tablist now uses the exact same compact camera + name components as the in-world nametag, with no spaces and a normal-width cyan plus.
+- Vanish now enables flight and restores the player's previous flight settings when disabled.
+- Vanished players are hidden from every non-operator; server operators can still see them.
+- Newly joining non-operators also cannot see already-vanished players.
+
+
+MineNight All-in-One v1.8.7
+- Media tablist now uses the same compact camera + cyan plus + pink name components as the in-world nametag, with no spaces.
+- Vanish enables flight while active and restores the player's previous flight state when disabled or when the plugin shuts down.
+- Vanished players are hidden from all non-operators; only server operators can see them, including players who join while vanish is active.
+- Quit announcements are suppressed when a vanished player disconnects.
+- Passenger nametag displays are hidden/suspended during vanish so floating labels cannot reveal the vanished player.
+
+
+MineNight All-in-One v1.8.8
+- Fixed the shared /kitroom inventory so players can freely move and rearrange items in their own inventory while the kitroom is open.
+- Shared kitroom template slots remain read-only and continue granting copies of the selected stack.
+- Shift-click and collect-to-cursor transfers are blocked from moving shared template items or inserting player items into the template.
+- Dragging within the player's own inventory remains allowed; drags touching the shared template inventory remain blocked.
+
+
+1.8.9
+- Existing default RTP/RTPQueue world names are migrated from world_plain/world_snow/etc. to MineNightBiomeGen world names (custom world names are preserved).\n- MineNight RTP destinations now resolve the MineNightBiomeGen worlds: mine_plains, mine_snow, mine_desert, mine_mushroom, mine_badlands, and mine_end.
+- /rtpq uses those same worlds and automatically falls back to mine_* worlds when old world_plain/world_snow defaults are still saved.
+- /back now stores the previous position for command/plugin teleports as well as death locations, while avoiding overwriting its own return target.
+- /back loads saved positions lazily, so locations in worlds restored by MineNightBiomeGen remain usable after restart.

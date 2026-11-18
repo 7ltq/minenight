@@ -1,0 +1,16 @@
+MineNight Kits v1.6.8
+/kit - nine saved loadouts and personal enderchests.
+Left-click kit chest: equip saved kit.
+Right-click kit chest: inspect its loadout; Save Inventory to Kit saves current hotbar, inventory, armor and offhand.
+Eye of Ender below each kit: personal 27-slot enderchest for that kit; stored in kits/players.yml.
+/kitroom - shared 3-page item selection for every player (45 items/page). Items can be taken without draining the template.
+/staffkitroom - staff-only editor for the 3 shared pages. Changes saved when changing pages or closing.
+/k1 to /k9, /kit1 to /kit9 - equip kit.
+/copy kit <player> <number> - copy a saved kit.
+/regear - obtain single-use regear shulker.
+
+
+Shared /kitroom inventory interaction (v1.8.8):
+- Players can use normal clicks and drags to rearrange items in their own inventory while /kitroom is open.
+- Clicking one of the top 45 shared item slots still takes a copy without removing the shared template item.
+- Shift-click and collect-to-cursor are blocked to protect the shared template from being changed.

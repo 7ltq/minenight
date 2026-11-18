@@ -1,0 +1,19 @@
+spawn:
+  world: world
+  x: 0.5
+  y: 80.0
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+settings:
+  teleport-on-join: true
+  override-respawn-location: true
+  spawn-command-allowed-during-combat: false
+messages:
+  prefix: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» '
+  set: '<green>Practice spawn has been set.'
+  arrived: '<gray>Teleported to spawn.'
+  no-spawn: '<red>Spawn world is not loaded.'
+  no-permission: '<red>You do not have permission.'
+  usage: '<gray>Usage: /prac spawn set here'
+  combat: '<red>You cannot use /spawn while fighting.'

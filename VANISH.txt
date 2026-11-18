@@ -1,0 +1,15 @@
+MineNight Vanish
+
+Command: /vanish
+Permission: minenight.staff.vanish (default: op)
+
+When enabled:
+- The player can fly until vanish is disabled.
+- The player's previous flight/allow-flight state is restored when vanish is disabled.
+- Every non-operator is unable to see the vanished player.
+- Server operators can still see the vanished player.
+- New non-operator joins are also kept from seeing players who are vanished.
+- The attached custom nametag display is hidden/suspended to avoid a floating label revealing the player.
+- Quit announcements are suppressed if the player disconnects while vanished.
+
+Vanish state is session-only. Disconnecting or disabling the plugin clears it.
