@@ -23,10 +23,37 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
     private final MiniMessage mini = MiniMessage.miniMessage();
     @Override public void onEnable() {
         saveDefaultConfig();
+        migrateDefaultSpawnToVoid();
         Bukkit.getPluginManager().registerEvents(this, core());
         getCommand("prac").setExecutor(this);
         getCommand("spawn").setExecutor(this);
     }
+    private void migrateDefaultSpawnToVoid() {
+        String configuredWorld = getConfig().getString("spawn.world", "world");
+        if (configuredWorld == null || !configuredWorld.equalsIgnoreCase("world")) return;
+
+        de.minenight.allinone.MineNightModule voidModule = core().module("void");
+        if (voidModule == null) return;
+
+        String voidWorldName = voidModule.getConfig().getString("destination.world", "minenight_void");
+        World voidWorld = Bukkit.getWorld(voidWorldName);
+        if (voidWorld == null) {
+            getLogger().warning("Cannot migrate the default spawn: Void world '" + voidWorldName + "' is not loaded.");
+            return;
+        }
+
+        getConfig().set("spawn.world", voidWorldName);
+        getConfig().set("spawn.x", voidModule.getConfig().getDouble("destination.x", voidWorld.getSpawnLocation().getX()));
+        getConfig().set("spawn.y", voidModule.getConfig().getDouble("destination.y", voidWorld.getSpawnLocation().getY()));
+        getConfig().set("spawn.z", voidModule.getConfig().getDouble("destination.z", voidWorld.getSpawnLocation().getZ()));
+        getConfig().set("spawn.yaw", voidModule.getConfig().getDouble("destination.yaw", 0.0));
+        getConfig().set("spawn.pitch", voidModule.getConfig().getDouble("destination.pitch", 0.0));
+        saveConfig();
+        getLogger().info("Migrated the default practice spawn to Void destination: " + voidWorldName
+                + " " + getConfig().getDouble("spawn.x") + " "
+                + getConfig().getDouble("spawn.y") + " " + getConfig().getDouble("spawn.z"));
+    }
+
     public Location spawn() {
         World world = Bukkit.getWorld(getConfig().getString("spawn.world", "world"));
         if (world == null) return null;
