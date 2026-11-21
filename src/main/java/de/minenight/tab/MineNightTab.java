@@ -21,11 +21,15 @@ import net.luckperms.api.model.user.User;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 public final class MineNightTab extends de.minenight.allinone.MineNightModule implements Listener {
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private BukkitTask task;
     private BukkitTask actionbarTask;
+    private final Set<UUID> hiddenActionbarPlayers = new HashSet<>();
     private volatile Component motd = Component.empty();
     private volatile boolean motdEnabled;
     private volatile int maxPlayersOverride = -1;
@@ -34,6 +38,9 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     public void onEnable() {
         saveDefaultConfig();
         Bukkit.getPluginManager().registerEvents(this, core());
+        loadActionbarPreferences();
+        getCommand("ip").setExecutor(this);
+        getCommand("ip").setTabCompleter(this);
         startUpdates();
         startActionbar();
         getLogger().info("MineNightTab enabled.");
@@ -65,8 +72,64 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
         long interval = Math.max(10L, getConfig().getLong("actionbar.interval-ticks", 40L));
         actionbarTask = Bukkit.getScheduler().runTaskTimer(core(), () -> {
             Component message = parse(getConfig().getString("actionbar.text", "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>"));
-            for (Player player : Bukkit.getOnlinePlayers()) player.sendActionBar(message);
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (!hiddenActionbarPlayers.contains(player.getUniqueId())) player.sendActionBar(message);
+            }
         }, 20L, interval);
+    }
+
+    private void loadActionbarPreferences() {
+        hiddenActionbarPlayers.clear();
+        for (String value : getConfig().getStringList("actionbar.hidden-players")) {
+            try {
+                hiddenActionbarPlayers.add(UUID.fromString(value));
+            } catch (IllegalArgumentException exception) {
+                getLogger().warning("Ignoring invalid actionbar player UUID: " + value);
+            }
+        }
+    }
+
+    private void saveActionbarPreferences() {
+        getConfig().set("actionbar.hidden-players",
+            hiddenActionbarPlayers.stream().map(UUID::toString).sorted().toList());
+        saveConfig();
+    }
+
+    private boolean handleIpCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("This command is only available to players."));
+            return true;
+        }
+        if (args.length == 0) {
+            boolean visible = !hiddenActionbarPlayers.contains(player.getUniqueId());
+            sender.sendMessage(Component.text("MineNight IP actionbar: " + (visible ? "ON" : "OFF")
+                + ". Use /ip on or /ip off."));
+            return true;
+        }
+        if (args.length != 1 || (!args[0].equalsIgnoreCase("on") && !args[0].equalsIgnoreCase("off"))) {
+            sender.sendMessage(Component.text("Usage: /ip <on|off>"));
+            return true;
+        }
+        boolean enabled = args[0].equalsIgnoreCase("on");
+        boolean changed = enabled
+            ? hiddenActionbarPlayers.remove(player.getUniqueId())
+            : hiddenActionbarPlayers.add(player.getUniqueId());
+        if (changed) saveActionbarPreferences();
+        if (enabled && getConfig().getBoolean("actionbar.enabled", true)) {
+            player.sendActionBar(parse(getConfig().getString("actionbar.text",
+                "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>")));
+        } else if (!enabled) {
+            player.sendActionBar(Component.empty());
+        }
+        sender.sendMessage(Component.text("MineNight IP actionbar: " + (enabled ? "ON" : "OFF") + "."));
+        return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!command.getName().equalsIgnoreCase("ip") || args.length != 1) return List.of();
+        String prefix = args[0].toLowerCase(Locale.ROOT);
+        return List.of("on", "off").stream().filter(option -> option.startsWith(prefix)).toList();
     }
 
     private void updatePlayer(Player player) {
@@ -202,12 +265,14 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("ip")) return handleIpCommand(sender, args);
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("minenighttab.admin")) {
                 sender.sendMessage(Component.text("You do not have permission."));
                 return true;
             }
             reloadConfig();
+            loadActionbarPreferences();
             startUpdates();
             startActionbar();
             sender.sendMessage(Component.text("MineNightTab configuration reloaded."));
