@@ -20,6 +20,7 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
@@ -106,7 +107,7 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
     }
 
     private void track(Item item) {
-        if (!despawnEnabled || !item.isValid()) return;
+        if (!despawnEnabled || item == null || item.isDead()) return;
         if (excludedWorlds.contains(item.getWorld().getName().toLowerCase(Locale.ROOT))) return;
         if (excludedMaterials.contains(item.getItemStack().getType().name().toLowerCase(Locale.ROOT))) return;
         trackedItems.put(item.getUniqueId(), item);
@@ -115,6 +116,11 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onItemSpawn(ItemSpawnEvent event) {
         track(event.getEntity());
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    public void onPlayerDrop(PlayerDropItemEvent event) {
+        track(event.getItemDrop());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
