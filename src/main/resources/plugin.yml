@@ -133,6 +133,9 @@ commands:
     aliases:
     - mnperms
     usage: /minenightperms
+  ip:
+    description: Toggle the MineNight server address above your hotbar.
+    usage: /ip <on|off>
   minenighttab:
     description: Manage MineNight tab and MOTD
     usage: /minenighttab reload
