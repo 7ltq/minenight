@@ -29,5 +29,6 @@ motd:
 
 actionbar:
   enabled: true
+  hidden-players: []
   interval-ticks: 40
   text: "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>"
