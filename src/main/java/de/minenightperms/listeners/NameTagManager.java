@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
@@ -58,16 +59,35 @@ public final class NameTagManager implements Listener {
         labels.clear();
         for (Scoreboard board : boards) {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                String id = teamName(player.getUniqueId());
-                Team team = board.getTeam(id);
-                if (team != null) team.unregister();
+                removeOldTeams(board, player, null);
             }
         }
         boards.clear();
     }
 
-    private String teamName(UUID id) {
-        return "mn" + id.toString().replace("-", "").substring(0, 13);
+    private String teamName(Player player) {
+        String groupName = plugin.getPlayerDataManager().getPlayerData(player.getUniqueId()).getGroupName();
+        var group = plugin.getGroupManager().getGroup(groupName);
+        int priority = group == null ? 0 : group.getPriority();
+        int boundedPriority = Math.max(-499999, Math.min(499999, priority));
+        String playerId = player.getUniqueId().toString().replace("-", "");
+        return "mn" + String.format(Locale.ROOT, "%06d", 499999 - boundedPriority) + playerId.substring(0, 8);
+    }
+
+    private void removeOldTeams(Scoreboard board, Player player, String desiredName) {
+        String playerId = player.getUniqueId().toString().replace("-", "");
+        String legacyName = "mn" + playerId.substring(0, 13);
+        String suffix = playerId.substring(0, 8);
+        for (Team team : new ArrayList<>(board.getTeams())) {
+            String name = team.getName();
+            if (name.equals(desiredName)) continue;
+            boolean rankedName = name.length() == 16 && name.startsWith("mn")
+                    && name.endsWith(suffix)
+                    && name.substring(2, 8).chars().allMatch(Character::isDigit);
+            if (!name.equals(legacyName) && !rankedName) continue;
+            team.removeEntry(player.getName());
+            if (team.getEntries().isEmpty()) team.unregister();
+        }
     }
 
     private boolean isVanished(Player player) {
@@ -140,8 +160,10 @@ public final class NameTagManager implements Listener {
             boolean vanished = isVanished(player);
             boolean custom = fullGradients && !mountUnsupported && !player.isDead() && !player.isInvisible() && !vanished && (attached || display == null);
             for (Scoreboard board : active) {
-                Team team = board.getTeam(teamName(player.getUniqueId()));
-                if (team == null) team = board.registerNewTeam(teamName(player.getUniqueId()));
+                String name = teamName(player);
+                removeOldTeams(board, player, name);
+                Team team = board.getTeam(name);
+                if (team == null) team = board.registerNewTeam(name);
                 if (!team.hasEntry(player.getName())) team.addEntry(player.getName());
                 team.setOption(Team.Option.NAME_TAG_VISIBILITY, custom ? Team.OptionStatus.NEVER : Team.OptionStatus.ALWAYS);
                 team.color(nearestColor(player));
@@ -175,7 +197,7 @@ public final class NameTagManager implements Listener {
                     mountUnsupported = true;
                     for (Scoreboard board : active) {
                         for (Player target : Bukkit.getOnlinePlayers()) {
-                            Team fallback = board.getTeam(teamName(target.getUniqueId()));
+                            Team fallback = board.getTeam(teamName(target));
                             if (fallback != null) {
                                 fallback.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
                                 fallback.color(nearestColor(target));
@@ -212,8 +234,7 @@ public final class NameTagManager implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         removeDisplay(event.getPlayer().getUniqueId());
         for (Scoreboard board : boards) {
-            Team team = board.getTeam(teamName(event.getPlayer().getUniqueId()));
-            if (team != null) team.unregister();
+            removeOldTeams(board, event.getPlayer(), null);
         }
     }
 }
