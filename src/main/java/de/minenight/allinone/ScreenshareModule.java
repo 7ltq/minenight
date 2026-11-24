@@ -29,7 +29,6 @@ import org.bukkit.scheduler.BukkitTask;
 public final class ScreenshareModule extends MineNightModule implements Listener {
     private record Session(String name, String staff) {}
     private final Map<UUID, Session> sessions = new HashMap<>();
-    private final Map<UUID, BukkitTask> pending = new HashMap<>();
     private BukkitTask reminders;
 
     @Override public void onEnable() {
@@ -48,8 +47,6 @@ public final class ScreenshareModule extends MineNightModule implements Listener
 
     @Override public void onDisable() {
         if (reminders != null) reminders.cancel();
-        pending.values().forEach(BukkitTask::cancel);
-        pending.clear();
         for (UUID id : sessions.keySet()) {
             Player player = Bukkit.getPlayer(id);
             if (player != null) player.clearTitle();
@@ -67,13 +64,11 @@ public final class ScreenshareModule extends MineNightModule implements Listener
                 Component.text("Join the Discord voice channel", NamedTextColor.WHITE)));
         player.sendMessage(Component.text("You are frozen for a staff review. ", NamedTextColor.RED)
                 .append(Component.text("Join MineNight Discord", NamedTextColor.AQUA).clickEvent(ClickEvent.openUrl(url))));
-        player.sendMessage(Component.text("Share only your Minecraft window, or ask staff for an alternative review. Leaving without reconnecting within 60 seconds may result in a 7-day ban.", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Share only your Minecraft window, or ask staff for an alternative review. Disconnecting during the review results in an immediate 7-day ban.", NamedTextColor.YELLOW));
     }
 
     private void release(UUID id) {
         sessions.remove(id);
-        BukkitTask task = pending.remove(id);
-        if (task != null) task.cancel();
         Player player = Bukkit.getPlayer(id);
         if (player != null) {
             player.clearTitle();
@@ -132,27 +127,12 @@ public final class ScreenshareModule extends MineNightModule implements Listener
 
     @EventHandler public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        Session session = sessions.get(id);
-        if (session == null || pending.containsKey(id)) return;
-        alert(session.name() + " disconnected during a review. Reconnect grace: 60 seconds.");
-        pending.put(id, Bukkit.getScheduler().runTaskLater(core(), () -> {
-            pending.remove(id);
-            if (Bukkit.getPlayer(id) != null || sessions.get(id) != session) return;
-            sessions.remove(id);
-            var moderation = core().module("moderation");
-            var command = getCommand("ban");
-            if (moderation != null && command != null) {
-                moderation.onCommand(Bukkit.getConsoleSender(), command, "ban", new String[]{session.name(), "screenshare_avoid", "7d"});
-                alert(session.name() + " did not reconnect during the review grace period. Ban requested.");
-            }
-        }, 1200L));
-    }
-
-    @EventHandler public void onJoin(PlayerJoinEvent event) {
-        UUID id = event.getPlayer().getUniqueId();
-        BukkitTask task = pending.remove(id);
-        if (task != null) task.cancel();
-        if (frozen(event.getPlayer())) notifyPlayer(event.getPlayer());
+        Session session = sessions.remove(id);
+        if (session == null || !core().isEnabled() || Bukkit.getServer().isStopping()) return;
+        if (core().module("moderation") instanceof de.minenight.moderation.MineNightModeration moderation
+                && moderation.banScreenshareAvoid(id, session.name())) {
+            alert(session.name() + " disconnected during a review and was banned for 7 days.");
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
