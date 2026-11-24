@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.UUID;
 
 public final class MineNightTab extends de.minenight.allinone.MineNightModule implements Listener {
+    private final TabPadding padding = new TabPadding();
     private final java.util.Set<UUID> hiddenIp = new java.util.HashSet<>();
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final Map<UUID, TabState> sentTab = new HashMap<>();
@@ -55,6 +56,7 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
 
     @Override
     public void onDisable() {
+        padding.close();
         if (task != null) task.cancel();
         if (actionbarTask != null) actionbarTask.cancel();
         sentTab.clear();
@@ -73,9 +75,12 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
         task = Bukkit.getScheduler().runTaskTimer(core(), () -> {
             refreshMotd();
             boolean enabled = getConfig().getBoolean("settings.tab-enabled", true);
-            if (!enabled) return;
+            if (!enabled) { padding.close(); return; }
             updateOrder();
-            for (Player player : Bukkit.getOnlinePlayers()) updatePlayer(player);
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                updatePlayer(player);
+                padding.update(player, getConfig().getBoolean("settings.fixed-tab-size", true));
+            }
         }, 1L, interval);
     }
 
@@ -267,6 +272,7 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
             if (event.getPlayer().isOnline() && getConfig().getBoolean("settings.tab-enabled", true)) {
                 updateOrder();
                 updatePlayer(event.getPlayer());
+                padding.update(event.getPlayer(), getConfig().getBoolean("settings.fixed-tab-size", true));
             }
         }, 5L);
     }
@@ -274,6 +280,7 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
+        padding.forget(event.getPlayer());
         sentTab.remove(id);
         sentNames.remove(id);
     }
