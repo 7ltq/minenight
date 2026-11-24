@@ -90,7 +90,7 @@ public class GuiListener implements Listener {
                     session.setState(GuiSession.State.GROUP_LIST);
                     plugin.getServer().getScheduler().runTaskLater(plugin.core(), () -> {
                         player.closeInventory();
-                        player.sendMessage(MM.deserialize("<yellow>Create a group using <white>/mnperms create <name>"));
+                        player.sendMessage(MM.deserialize("<#91B2FF>Create a group using <white>/mnperms create <name>"));
                     }, 1L);
                     return;
                 }
@@ -110,13 +110,13 @@ public class GuiListener implements Listener {
                     case 10 -> {
                         session.setState(GuiSession.State.COLOR_CATEGORY_ROLE);
                         player.openInventory(GuiManager.buildColorCategoryPicker(
-                            "<gradient:#8175AE:#D5DCE8><bold>Color Type</bold></gradient><white>: Role Color",
+                            "<gradient:#4B63C4:#91B2FF><bold>Color Type</bold></gradient><white>: Role Color",
                             g.getRoleGradient()));
                     }
                     case 12 -> {
                         session.setState(GuiSession.State.COLOR_CATEGORY_NAME);
                         player.openInventory(GuiManager.buildColorCategoryPicker(
-                            "<gradient:#8175AE:#D5DCE8><bold>Color Type</bold></gradient><white>: Name Color",
+                            "<gradient:#4B63C4:#91B2FF><bold>Color Type</bold></gradient><white>: Name Color",
                             g.getNameGradient()));
                     }
                     case 14 -> {
@@ -129,7 +129,7 @@ public class GuiListener implements Listener {
                         if (item.getType() == Material.TNT) {
                             plugin.getGroupManager().deleteGroup(g.getName());
                             player.sendMessage(MM.deserialize(
-                                "<red>✗ Group <white>" + g.getName() + "<red> deleted!"));
+                                "<#6685E8>✗ Group <white>" + g.getName() + "<#6685E8> deleted!"));
                             session.setState(GuiSession.State.GROUP_LIST);
                             player.openInventory(GuiManager.buildGroupList(plugin));
                         }
@@ -160,13 +160,13 @@ public class GuiListener implements Listener {
                             g.setPrefix("");
                             plugin.getGroupManager().saveGroups();
                             player.sendMessage(MM.deserialize(
-                                "<yellow>✔ Prefix cleared for <white>" + g.getName()));
+                                "<#91B2FF>✔ Prefix cleared for <white>" + g.getName()));
                             player.openInventory(GuiManager.buildGroupEditor(plugin, g));
                         } else {
                             session.setState(GuiSession.State.GROUP_EDITOR);
                             plugin.getServer().getScheduler().runTaskLater(plugin.core(), () -> {
                                 player.closeInventory();
-                                player.sendMessage(MM.deserialize("<yellow>Set a prefix using <white>/mnperms group " + g.getName() + " setprefix <text>"));
+                                player.sendMessage(MM.deserialize("<#91B2FF>Set a prefix using <white>/mnperms group " + g.getName() + " setprefix <text>"));
                             }, 1L);
                         }
                     }
@@ -186,7 +186,7 @@ public class GuiListener implements Listener {
                     case 34 -> {
                         plugin.getGroupManager().saveGroups();
                         player.sendMessage(MM.deserialize(
-                            "<green>✔ Group <white>" + g.getName() + "<green> saved!"));
+                            "<#91B2FF>✔ Group <white>" + g.getName() + "<#91B2FF> saved!"));
                         session.setState(GuiSession.State.GROUP_LIST);
                         player.openInventory(GuiManager.buildGroupList(plugin));
                     }
@@ -209,7 +209,7 @@ public class GuiListener implements Listener {
                     session.setState(GuiSession.State.GROUP_EDITOR);
                     plugin.getServer().getScheduler().runTaskLater(plugin.core(), () -> {
                         player.closeInventory();
-                        player.sendMessage(MM.deserialize("<yellow>Set a custom symbol using <white>/mnperms group " + g.getName() + " setemoji <text>"));
+                        player.sendMessage(MM.deserialize("<#91B2FF>Set a custom symbol using <white>/mnperms group " + g.getName() + " setemoji <text>"));
                     }, 1L);
                 } else if (slot == 49 || item.getType() == Material.BARRIER) {
 
@@ -239,16 +239,16 @@ public class GuiListener implements Listener {
                                             : GuiSession.State.GRADIENT_PICKER_NAME);
                     session.setGradientPage(0);
                     String title = isRole
-                        ? "<gradient:#8175AE:#D5DCE8><bold>Gradients</bold></gradient><white>: Role Color"
-                        : "<gradient:#8175AE:#D5DCE8><bold>Gradients</bold></gradient><white>: Name Color";
+                        ? "<gradient:#4B63C4:#91B2FF><bold>Gradients</bold></gradient><white>: Role Color"
+                        : "<gradient:#4B63C4:#91B2FF><bold>Gradients</bold></gradient><white>: Name Color";
                     player.openInventory(GuiManager.buildColorPicker(title, 0, GradientPresets.GRADIENTS));
                 } else if (slot == 15) {
                     session.setState(isRole ? GuiSession.State.SOLID_COLOR_PICKER_ROLE
                                             : GuiSession.State.SOLID_COLOR_PICKER_NAME);
                     session.setGradientPage(0);
                     String title = isRole
-                        ? "<aqua><bold>Solid Colors</bold></aqua><white>: Role Color"
-                        : "<aqua><bold>Solid Colors</bold></aqua><white>: Name Color";
+                        ? "<#91B2FF><bold>Solid Colors</bold></#91B2FF><white>: Role Color"
+                        : "<#91B2FF><bold>Solid Colors</bold></#91B2FF><white>: Name Color";
                     player.openInventory(GuiManager.buildColorPicker(title, 0, GradientPresets.SOLID_COLORS));
                 }
             }
@@ -270,12 +270,12 @@ public class GuiListener implements Listener {
                 String pickerTitle;
                 if (isGradient) {
                     pickerTitle = isRole
-                        ? "<gradient:#8175AE:#D5DCE8><bold>Gradients</bold></gradient><white>: Role Color"
-                        : "<gradient:#8175AE:#D5DCE8><bold>Gradients</bold></gradient><white>: Name Color";
+                        ? "<gradient:#4B63C4:#91B2FF><bold>Gradients</bold></gradient><white>: Role Color"
+                        : "<gradient:#4B63C4:#91B2FF><bold>Gradients</bold></gradient><white>: Name Color";
                 } else {
                     pickerTitle = isRole
-                        ? "<aqua><bold>Solid Colors</bold></aqua><white>: Role Color"
-                        : "<aqua><bold>Solid Colors</bold></aqua><white>: Name Color";
+                        ? "<#91B2FF><bold>Solid Colors</bold></#91B2FF><white>: Role Color"
+                        : "<#91B2FF><bold>Solid Colors</bold></#91B2FF><white>: Name Color";
                 }
 
                 int page = session.getGradientPage();
@@ -285,8 +285,8 @@ public class GuiListener implements Listener {
                 if (slot == 47 || item.getType() == Material.BARRIER) {
                     session.setState(categoryState);
                     String categoryTitle = isRole
-                        ? "<gradient:#8175AE:#D5DCE8><bold>Color Type</bold></gradient><white>: Role Color"
-                        : "<gradient:#8175AE:#D5DCE8><bold>Color Type</bold></gradient><white>: Name Color";
+                        ? "<gradient:#4B63C4:#91B2FF><bold>Color Type</bold></gradient><white>: Role Color"
+                        : "<gradient:#4B63C4:#91B2FF><bold>Color Type</bold></gradient><white>: Name Color";
                     player.openInventory(GuiManager.buildColorCategoryPicker(categoryTitle,
                         isRole ? g.getRoleGradient() : g.getNameGradient()));
                 } else if (slot == 45 && page > 0) {
@@ -371,7 +371,7 @@ public class GuiListener implements Listener {
                         plugin.getPlayerDataManager()
                               .setPlayerGroup(target.getUniqueId(), groupName.toLowerCase());
                         player.sendMessage(MM.deserialize(
-                            "<green>✔ <white>" + targetName + "<green> → <white>" + groupName));
+                            "<#91B2FF>✔ <white>" + targetName + "<#91B2FF> → <white>" + groupName));
                     }
                     session.setState(GuiSession.State.SET_ROLE_PLAYER_LIST);
                     player.openInventory(GuiManager.buildPlayerList(plugin));

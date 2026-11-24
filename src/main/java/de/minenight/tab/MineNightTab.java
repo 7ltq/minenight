@@ -12,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -21,9 +22,15 @@ import net.luckperms.api.model.user.User;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
 
 public final class MineNightTab extends de.minenight.allinone.MineNightModule implements Listener {
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
+    private final Map<UUID, TabState> sentTab = new HashMap<>();
+    private final Map<UUID, Component> sentNames = new HashMap<>();
+    private record TabState(Component header, Component footer) {}
     private BukkitTask task;
     private BukkitTask actionbarTask;
     private volatile Component motd = Component.empty();
@@ -43,10 +50,14 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     public void onDisable() {
         if (task != null) task.cancel();
         if (actionbarTask != null) actionbarTask.cancel();
+        sentTab.clear();
+        sentNames.clear();
     }
 
     private void startUpdates() {
         if (task != null) task.cancel();
+        sentTab.clear();
+        sentNames.clear();
         FileConfiguration config = getConfig();
         motdEnabled = config.getBoolean("settings.motd-enabled", true);
         maxPlayersOverride = config.getInt("settings.motd-max-players", -1);
@@ -64,7 +75,7 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
         if (!getConfig().getBoolean("actionbar.enabled", true)) return;
         long interval = Math.max(10L, getConfig().getLong("actionbar.interval-ticks", 40L));
         actionbarTask = Bukkit.getScheduler().runTaskTimer(core(), () -> {
-            Component message = parse(getConfig().getString("actionbar.text", "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>"));
+            Component message = parse(getConfig().getString("actionbar.text", "<gradient:#4B63C4:#91B2FF>minenight.de</gradient>"));
             for (Player player : Bukkit.getOnlinePlayers()) player.sendActionBar(message);
         }, 20L, interval);
     }
@@ -72,13 +83,23 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     private void updatePlayer(Player player) {
         List<String> header = getConfig().getStringList("tab.header");
         List<String> footer = getConfig().getStringList("tab.footer");
-        player.sendPlayerListHeaderAndFooter(formatLines(header, player), formatLines(footer, player));
+        UUID id = player.getUniqueId();
+        TabState next = new TabState(formatLines(header, player), formatLines(footer, player));
+        if (!next.equals(sentTab.get(id))) {
+            player.sendPlayerListHeaderAndFooter(next.header(), next.footer());
+            sentTab.put(id, next);
+        }
         if (getConfig().getBoolean("settings.tab-player-names", true)) {
+            Component name;
             if (isMediaPlayer(player)) {
-                player.playerListName(mediaPlayerListName(player));
+                name = mediaPlayerListName(player);
             } else {
                 String template = getConfig().getString("tab.player-name", "{prefix}{player}{suffix}");
-                player.playerListName(parse(apply(template, player)));
+                name = parse(apply(template, player));
+            }
+            if (!name.equals(sentNames.get(id))) {
+                player.playerListName(name);
+                sentNames.put(id, name);
             }
         }
     }
@@ -198,6 +219,13 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
                 updatePlayer(event.getPlayer());
             }
         }, 5L);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        sentTab.remove(id);
+        sentNames.remove(id);
     }
 
     @Override

@@ -60,7 +60,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 
 public final class SchematicModule extends MineNightModule implements Listener {
-    private static final String PREFIX = "§8[§dMineNight§8] §7";
+    private static final String PREFIX = "§8[§9MineNight§8] §7";
     private final Map<UUID, Clipboard> loaded = new HashMap<>();
     private final Map<UUID, String> loadedNames = new HashMap<>();
     private final Map<UUID, RecentPaste> lastPastes = new HashMap<>();

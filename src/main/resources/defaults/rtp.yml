@@ -1,9 +1,9 @@
 gui:
-  title: '<gradient:#8175AE:#D5DCE8>MineNight RTP</gradient>'
+  title: '<gradient:#4B63C4:#91B2FF>MineNight RTP</gradient>'
   fill-empty-slots: true
   lore:
-    - '<gray>World: <white>{world}'
-    - '<yellow>Click to teleport instantly'
+    - '<#B7C7E8>World: <white>{world}'
+    - '<#91B2FF>Click to teleport instantly'
 teleport:
   min-radius: 500
   max-radius: 5000
@@ -13,55 +13,55 @@ destinations:
   plain:
     enabled: true
     world: plains_world
-    display-name: '<green>Plains'
+    display-name: '<#91B2FF>Plains'
     plain-name: Plains
     icon: GRASS_BLOCK
     slot: 10
   snow:
     enabled: true
     world: snow_world
-    display-name: '<aqua>Snow'
+    display-name: '<#91B2FF>Snow'
     plain-name: Snow
     icon: SNOW_BLOCK
     slot: 11
   desert:
     enabled: true
     world: desert_world
-    display-name: '<yellow>Desert'
+    display-name: '<#91B2FF>Desert'
     plain-name: Desert
     icon: SAND
     slot: 13
   mushroom:
     enabled: true
     world: mushroom_world
-    display-name: '<light_purple>Mushroom'
+    display-name: '<#91B2FF>Mushroom'
     plain-name: Mushroom
     icon: MYCELIUM
     slot: 15
   badlands:
     enabled: true
     world: badlands_world
-    display-name: '<gold>Badlands'
+    display-name: '<#91B2FF>Badlands'
     plain-name: Badlands
     icon: RED_SAND
     slot: 16
   end:
     enabled: true
     world: end_world
-    display-name: '<light_purple>The End'
+    display-name: '<#91B2FF>The End'
     plain-name: The End
     icon: END_STONE
     slot: 22
 messages:
-  no-permission: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <red>No permission.'
-  player-only: '<red>Only players can use this command.'
-  searching: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <gray>Finding a safe location...'
-  teleported: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <green>Teleported to {destination}!'
-  already-searching: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <yellow>Your RTP is already in progress.'
-  destination-disabled: '<red>This destination is disabled.'
-  world-not-found: '<red>World {world} is not loaded. Check config.yml.'
-  overworld-only: '<red>RTP destinations must be Overworld worlds.'
-  no-safe-location: '<red>No safe location was found. Try again.'
-  teleport-failed: '<red>Teleport failed. Please try again.'
-  rtp-usage: '<red>Usage: /rtp [plains|snow|desert|mushroom|badlands|end] (or /rtpgui)'
-  reloaded: '<green>MineNightRTP configuration reloaded.'
+  no-permission: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#6685E8>No permission.'
+  player-only: '<#6685E8>Only players can use this command.'
+  searching: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#B7C7E8>Finding a safe location...'
+  teleported: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#91B2FF>Teleported to {destination}!'
+  already-searching: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#91B2FF>Your RTP is already in progress.'
+  destination-disabled: '<#6685E8>This destination is disabled.'
+  world-not-found: '<#6685E8>World {world} is not loaded. Check config.yml.'
+  overworld-only: '<#6685E8>RTP destinations must be Overworld worlds.'
+  no-safe-location: '<#6685E8>No safe location was found. Try again.'
+  teleport-failed: '<#6685E8>Teleport failed. Please try again.'
+  rtp-usage: '<#6685E8>Usage: /rtp [plains|snow|desert|mushroom|badlands|end] (or /rtpgui)'
+  reloaded: '<#91B2FF>MineNightRTP configuration reloaded.'

@@ -169,6 +169,6 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
         if (location != null) event.setRespawnLocation(location);
     }
     private void tell(CommandSender sender,String key) {
-        sender.sendMessage(mini.deserialize(getConfig().getString("messages.prefix", "") + getConfig().getString("messages."+key,"<red>"+key)));
+        sender.sendMessage(mini.deserialize(getConfig().getString("messages.prefix", "") + getConfig().getString("messages."+key,"<#6685E8>"+key)));
     }
 }

@@ -20,10 +20,10 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -37,9 +37,13 @@ import java.util.UUID;
 
 public final class MineNightPerformance extends de.minenight.allinone.MineNightModule implements Listener {
     private final Map<UUID, Item> trackedItems = new HashMap<>();
+    private final Map<UUID, Long> itemFirstSeen = new HashMap<>();
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private BukkitTask sweepTask;
     private int despawnTicks;
+    private int spawnDespawnTicks;
+    private double spawnRadiusSquared;
+    private double spawnVerticalRange;
     private boolean despawnEnabled;
     private boolean blockPluginCommands;
     private boolean hidePluginCommands;
@@ -66,13 +70,14 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         }
         loadOptions();
         Bukkit.getPluginManager().registerEvents(this, core());
-        getLogger().info("MineNightPerformance enabled. Item despawn: " + (despawnEnabled ? despawnTicks / 20 + " seconds" : "disabled"));
+        getLogger().info("MineNightPerformance enabled. Item despawn: " + (despawnEnabled ? despawnTicks / 20 + " seconds outside spawn; " + spawnDespawnTicks / 20 + " seconds at spawn" : "disabled"));
     }
 
     @Override
     public void onDisable() {
         if (sweepTask != null) sweepTask.cancel();
         trackedItems.clear();
+        itemFirstSeen.clear();
         recentlyBrokenBlocks.clear();
     }
 
@@ -85,18 +90,23 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         despawnEnabled = getConfig().getBoolean("items.enabled", true);
         int seconds = Math.max(1, Math.min(3600, getConfig().getInt("items.despawn-seconds", 10)));
         despawnTicks = seconds * 20;
+        spawnDespawnTicks = Math.max(1, Math.min(3600, getConfig().getInt("items.spawn.despawn-seconds", 2))) * 20;
+        double spawnRadius = Math.max(0, getConfig().getDouble("items.spawn.radius", 32.0));
+        spawnRadiusSquared = spawnRadius * spawnRadius;
+        spawnVerticalRange = Math.max(0, getConfig().getDouble("items.spawn.vertical-range", 24.0));
         excludedWorlds = normalize(getConfig().getStringList("items.excluded-worlds"));
         excludedMaterials = normalize(getConfig().getStringList("items.excluded-materials"));
         blockPluginCommands = getConfig().getBoolean("commands.block-plugin-list", true);
         hidePluginCommands = getConfig().getBoolean("commands.hide-plugin-list-suggestions", true);
         if (sweepTask != null) sweepTask.cancel();
         trackedItems.clear();
+        itemFirstSeen.clear();
         if (despawnEnabled) {
             for (World world : Bukkit.getWorlds()) {
                 if (excludedWorlds.contains(world.getName().toLowerCase(Locale.ROOT))) continue;
                 for (Item item : world.getEntitiesByClass(Item.class)) track(item);
             }
-            sweepTask = Bukkit.getScheduler().runTaskTimer(core(), this::sweepItems, 20L, 20L);
+            sweepTask = Bukkit.getScheduler().runTaskTimer(core(), this::sweepItems, 5L, 5L);
         }
     }
 
@@ -107,20 +117,17 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
     }
 
     private void track(Item item) {
-        if (!despawnEnabled || item == null || item.isDead()) return;
+        if (!despawnEnabled || !item.isValid()) return;
         if (excludedWorlds.contains(item.getWorld().getName().toLowerCase(Locale.ROOT))) return;
         if (excludedMaterials.contains(item.getItemStack().getType().name().toLowerCase(Locale.ROOT))) return;
-        trackedItems.put(item.getUniqueId(), item);
+        UUID id = item.getUniqueId();
+        trackedItems.put(id, item);
+        itemFirstSeen.putIfAbsent(id, System.currentTimeMillis() - Math.max(0L, (long) item.getTicksLived() * 50L));
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onItemSpawn(ItemSpawnEvent event) {
         track(event.getEntity());
-    }
-
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onPlayerDrop(PlayerDropItemEvent event) {
-        track(event.getItemDrop());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -133,20 +140,52 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        if (!despawnEnabled) return;
+        for (Entity entity : event.getChunk().getEntities()) {
+            if (!(entity instanceof Item)) continue;
+            UUID id = entity.getUniqueId();
+            trackedItems.remove(id);
+            itemFirstSeen.remove(id);
+        }
+    }
+
     private void sweepItems() {
+        long now = System.currentTimeMillis();
+        org.bukkit.Location configuredSpawn = null;
+        de.minenight.allinone.MineNightModule spawnModule = core().module("spawn");
+        if (spawnModule instanceof de.minenight.pracspawn.MineNightPracticeSpawn practiceSpawn) {
+            configuredSpawn = practiceSpawn.spawn();
+        }
         Iterator<Map.Entry<UUID, Item>> iterator = trackedItems.entrySet().iterator();
         while (iterator.hasNext()) {
-            Item item = iterator.next().getValue();
+            Map.Entry<UUID, Item> entry = iterator.next();
+            Item item = entry.getValue();
+            UUID id = entry.getKey();
             if (!item.isValid() || item.isDead()) {
                 iterator.remove();
+                itemFirstSeen.remove(id);
                 continue;
             }
-            if (item.getTicksLived() >= despawnTicks) {
+            long ageMillis = Math.max(0L, now - itemFirstSeen.getOrDefault(id, now));
+            if (ageMillis >= itemDespawnTicks(item, configuredSpawn) * 50L) {
                 item.remove();
                 iterator.remove();
+                itemFirstSeen.remove(id);
                 removedItems++;
             }
         }
+    }
+
+    private int itemDespawnTicks(Item item, org.bukkit.Location spawn) {
+        if (spawnRadiusSquared <= 0) return despawnTicks;
+        if (spawn == null || spawn.getWorld() != item.getWorld()) return despawnTicks;
+        org.bukkit.Location location = item.getLocation();
+        double dx = location.getX() - spawn.getX();
+        double dz = location.getZ() - spawn.getZ();
+        if (Math.abs(location.getY() - spawn.getY()) > spawnVerticalRange) return despawnTicks;
+        return dx * dx + dz * dz <= spawnRadiusSquared ? spawnDespawnTicks : despawnTicks;
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -183,7 +222,6 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         if (!blockDropsIn(event.getLocation().getWorld())) return;
         event.setYield(0.0f);
         suppressedBlockDrops += event.blockList().size();
-        for (org.bukkit.block.Block block : event.blockList()) markBroken(block.getLocation());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -191,7 +229,6 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         if (!blockDropsIn(event.getBlock().getWorld())) return;
         event.setYield(0.0f);
         suppressedBlockDrops += event.blockList().size();
-        for (org.bukkit.block.Block block : event.blockList()) markBroken(block.getLocation());
     }
 
     private String brokenKey(org.bukkit.Location location) {
@@ -223,13 +260,13 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
     }
 
     private void sendDropStatus(CommandSender sender) {
-        sender.sendMessage(miniMessage.deserialize("<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <gray>Block drops: "
-            + (blockDropsEnabled ? "<red>DISABLED" : "<green>ENABLED") + "<gray>. Suppressed blocks: <white>" + suppressedBlockDrops));
+        sender.sendMessage(miniMessage.deserialize("<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#B7C7E8>Block drops: "
+            + (blockDropsEnabled ? "<#6685E8>DISABLED" : "<#91B2FF>ENABLED") + "<#B7C7E8>. Suppressed blocks: <white>" + suppressedBlockDrops));
     }
 
     private boolean runNoBlockDrops(CommandSender sender, String[] args) {
         if (sender instanceof Player player && !player.isOp()) {
-            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<red>No permission.")));
+            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<#6685E8>No permission.")));
             return true;
         }
         if (args.length == 0 || args[0].equalsIgnoreCase("status")) {
@@ -253,7 +290,7 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
             return runNoBlockDrops(sender, java.util.Arrays.copyOfRange(args, 2, args.length));
         }
         if (sender instanceof Player player && !player.isOp()) {
-            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<red>No permission.")));
+            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<#6685E8>No permission.")));
             return true;
         }
         sender.sendMessage("Usage: /no block drop <on|off|status>");
@@ -261,13 +298,13 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
     }
 
     private void sendMobStatus(CommandSender sender) {
-        sender.sendMessage(miniMessage.deserialize("<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <gray>Mob spawning: "
-            + (noMobsEnabled ? "<red>BLOCKED" : "<green>ALLOWED") + "<gray>. Blocked so far: <white>" + blockedMobs));
+        sender.sendMessage(miniMessage.deserialize("<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#B7C7E8>Mob spawning: "
+            + (noMobsEnabled ? "<#6685E8>BLOCKED" : "<#91B2FF>ALLOWED") + "<#B7C7E8>. Blocked so far: <white>" + blockedMobs));
     }
 
     private boolean runNoMobs(CommandSender sender, String[] args) {
         if (sender instanceof Player player && !player.isOp()) {
-            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<red>You do not have permission to use this command.")));
+            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<#6685E8>You do not have permission to use this command.")));
             return true;
         }
         if (args.length == 0 || args[0].equalsIgnoreCase("status")) {
@@ -299,7 +336,7 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
         if (!blockPluginCommands || event.getPlayer().isOp()) return;
         if (!isPluginListCommand(event.getMessage())) return;
         event.setCancelled(true);
-        event.getPlayer().sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<red>You do not have permission to use this command.")));
+        event.getPlayer().sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<#6685E8>You do not have permission to use this command.")));
     }
 
     @EventHandler
@@ -323,22 +360,22 @@ public final class MineNightPerformance extends de.minenight.allinone.MineNightM
             if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
                 reloadConfig();
                 loadOptions();
-                sender.sendMessage(miniMessage.deserialize("<gradient:#8175AE:#D5DCE8>MineNight</gradient> <gray>» <green>Configuration reloaded."));
+                sender.sendMessage(miniMessage.deserialize("<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#B7C7E8>» <#91B2FF>Configuration reloaded."));
                 return true;
             }
             Runtime runtime = Runtime.getRuntime();
             long used = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
             long allocated = runtime.totalMemory() / (1024 * 1024);
             long max = runtime.maxMemory() / (1024 * 1024);
-            sender.sendMessage(miniMessage.deserialize("<gradient:#8175AE:#D5DCE8>MineNight Performance</gradient>"));
+            sender.sendMessage(miniMessage.deserialize("<gradient:#4B63C4:#91B2FF>MineNight Performance</gradient>"));
             sender.sendMessage("Memory: " + used + " / " + allocated + " MiB allocated (max " + max + " MiB)");
             sender.sendMessage("Tracked dropped items: " + trackedItems.size() + " | Removed: " + removedItems);
-            sender.sendMessage("Item lifetime: " + (despawnEnabled ? despawnTicks / 20 + " seconds" : "disabled"));
+            sender.sendMessage("Item lifetime: " + (despawnEnabled ? despawnTicks / 20 + " seconds outside spawn, " + spawnDespawnTicks / 20 + " seconds within " + Math.sqrt(spawnRadiusSquared) + " blocks of /prac spawn" : "disabled"));
             sender.sendMessage("Mob spawning: " + (noMobsEnabled ? "blocked" : "allowed") + " | Spawns blocked: " + blockedMobs);
             sender.sendMessage("Block drops: " + (blockDropsEnabled ? "disabled" : "enabled") + " | Suppressed blocks: " + suppressedBlockDrops);
             sender.sendMessage("Usage: /mnperf [reload|mobs on|mobs off|mobs status|drops on|drops off|drops status]");
         } else {
-            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<red>You do not have permission to use this command.")));
+            sender.sendMessage(miniMessage.deserialize(getConfig().getString("messages.no-permission", "<#6685E8>You do not have permission to use this command.")));
         }
         return true;
     }

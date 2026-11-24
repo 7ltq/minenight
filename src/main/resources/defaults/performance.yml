@@ -1,6 +1,10 @@
 items:
   enabled: true
   despawn-seconds: 10
+  spawn:
+    despawn-seconds: 2
+    radius: 32
+    vertical-range: 24
   excluded-worlds: []
   excluded-materials: []
 
@@ -18,4 +22,4 @@ commands:
   hide-plugin-list-suggestions: true
 
 messages:
-  no-permission: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» <red>You do not have permission to use this command.'
+  no-permission: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» <#6685E8>You do not have permission to use this command.'

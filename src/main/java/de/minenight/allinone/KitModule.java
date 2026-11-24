@@ -24,6 +24,12 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.util.Vector;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -39,11 +45,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 public final class KitModule extends MineNightModule implements Listener {
-    private static final String PREFIX = "§8[§dMineNight§8] §7";
+    private static final String PREFIX = "§8[§9MineNight§8] §7";
     private static final int[] KIT_CHEST_SLOTS = {9,10,11,12,13,14,15,16,17};
     private static final int[] KIT_ROOM_SLOTS = {18,19,20,21,22,23,24,25,26};
     private static final int[] DECOR_TOP = {0,1,2,3,4,5,6,7,8};
-    private static final int[] DECOR_MIDDLE = {27,31,35,36,37,38,39,40,41,42,43,44};
+    private static final int[] DECOR_BOTTOM = {36,37,38,39,40,41,42,43,44};
 
     private final Map<UUID, Long> lastHit = new HashMap<>();
     private final Map<UUID, Integer> activeKits = new HashMap<>();
@@ -101,6 +107,67 @@ public final class KitModule extends MineNightModule implements Listener {
             if (getCommand(name) != null) getCommand(name).setExecutor(this);
         }
         Bukkit.getPluginManager().registerEvents(this, core());
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        if (getConfig().getBoolean("death.compact-drops", true) && !event.getKeepInventory() && !event.getDrops().isEmpty()) {
+            Location location = player.getLocation().clone();
+            World world = location.getWorld();
+            List<ItemStack> compact = new ArrayList<>();
+            for (ItemStack original : event.getDrops()) {
+                if (original == null || original.getType().isAir() || original.getAmount() <= 0) continue;
+                ItemStack remaining = original.clone();
+                for (ItemStack existing : compact) {
+                    if (!existing.isSimilar(remaining)) continue;
+                    int space = existing.getMaxStackSize() - existing.getAmount();
+                    if (space <= 0) continue;
+                    int moved = Math.min(space, remaining.getAmount());
+                    existing.setAmount(existing.getAmount() + moved);
+                    remaining.setAmount(remaining.getAmount() - moved);
+                    if (remaining.getAmount() == 0) break;
+                }
+                while (remaining.getAmount() > 0) {
+                    int amount = Math.min(remaining.getMaxStackSize(), remaining.getAmount());
+                    ItemStack split = remaining.clone();
+                    split.setAmount(amount);
+                    compact.add(split);
+                    remaining.setAmount(remaining.getAmount() - amount);
+                }
+            }
+            event.getDrops().clear();
+            Bukkit.getScheduler().runTask(core(), () -> {
+                if (world == null) return;
+                double spread = Math.max(0.0, Math.min(3.0, getConfig().getDouble("death.drop-spread-radius", 1.5)));
+                java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
+                for (ItemStack stack : compact) {
+                    double offsetX = random.nextDouble(-spread, spread);
+                    double offsetZ = random.nextDouble(-spread, spread);
+                    Location dropLocation = location.clone().add(offsetX, 0.15, offsetZ);
+                    org.bukkit.entity.Item dropped = world.dropItem(dropLocation, stack);
+                    dropped.setVelocity(new Vector(0.0, 0.0, 0.0));
+                }
+            });
+        }
+        if (getConfig().getBoolean("death.auto-respawn", true)) {
+            UUID playerId = player.getUniqueId();
+            Bukkit.getScheduler().runTaskLater(core(), () -> {
+                Player current = Bukkit.getPlayer(playerId);
+                if (current != null && current.isOnline() && current.isDead()) current.spigot().respawn();
+            }, 2L);
+        }
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        if (!getConfig().getBoolean("death.auto-equip-kit-1", true)) return;
+        UUID playerId = event.getPlayer().getUniqueId();
+        Bukkit.getScheduler().runTaskLater(core(), () -> {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !player.isOnline() || player.isDead()) return;
+            if (kitExists(playerId, 1)) loadKit(player, playerId, 1);
+        }, 1L);
     }
 
     private String kitPath(UUID id, int number) { return "players." + id + ".kits." + number; }
@@ -195,7 +262,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private ItemStack pane() {
-        ItemStack stack = new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+        ItemStack stack = new ItemStack(Material.BLUE_STAINED_GLASS_PANE);
         ItemMeta meta = stack.getItemMeta();
         meta.setDisplayName(" ");
         stack.setItemMeta(meta);
@@ -209,9 +276,12 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void openMain(Player player) {
-        Inventory inv = screen("main", player, 0, 1, 54, "§0MineNight's Kits");
+        Inventory inv = screen("main", player, 0, 1, 45, "§9MineNight §8» §bKits");
         for (int slot : DECOR_TOP) inv.setItem(slot, pane());
-        for (int slot : DECOR_MIDDLE) inv.setItem(slot, pane());
+        for (int slot : DECOR_BOTTOM) inv.setItem(slot, pane());
+        inv.setItem(27, pane());
+        inv.setItem(31, pane());
+        inv.setItem(35, pane());
 
         for (int n = 1; n <= 9; n++) {
             Material chestMaterial = kitExists(player.getUniqueId(), n) ? Material.CHEST : Material.TRAPPED_CHEST;
@@ -219,7 +289,7 @@ public final class KitModule extends MineNightModule implements Listener {
                     "§7Left-click: load kit",
                     "§7Right-click: view and edit kit",
                     "§8/kit" + n + " also works"));
-            inv.setItem(KIT_ROOM_SLOTS[n - 1], icon(Material.ENDER_EYE, "Kit " + n + " Enderchest",
+            inv.setItem(KIT_ROOM_SLOTS[n - 1], icon(Material.ENDER_CHEST, "Kit " + n + " Ender Chest",
                     "§7Open your private kit storage",
                     "§7Independent for each kit"));
         }
@@ -232,7 +302,7 @@ public final class KitModule extends MineNightModule implements Listener {
                 "§7to copy another player's kit"));
         inv.setItem(30, icon(Material.ANVIL, "Repair Inventory",
                 "§7Repairs all carried and worn items"));
-        inv.setItem(32, icon(Material.PURPLE_SHULKER_BOX, "Regear Shulker",
+        inv.setItem(32, icon(Material.BLUE_SHULKER_BOX, "Regear Shulker",
                 "§7Use §f/regear §7to get one",
                 "§7Single-use and disappears after opening"));
         inv.setItem(33, icon(Material.ENDER_CHEST, "Shared Kitroom",
@@ -244,7 +314,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void openPreview(Player player, int kit) {
-        Inventory inv = screen("preview", player, kit, 1, 54, "§0Kit " + kit + " §8- §7Preview");
+        Inventory inv = screen("preview", player, kit, 1, 54, "§9Kit " + kit + " §8» §bPreview");
         for (int slot = 36; slot < 54; slot++) inv.setItem(slot, pane());
         if (kitExists(player.getUniqueId(), kit)) {
             String path = kitPath(player.getUniqueId(), kit);
@@ -266,7 +336,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void openKitEnder(Player player, int kit) {
-        Inventory inv = screen("kitender", player, kit, 1, 27, "§0Kit " + kit + " §8- §7Enderchest");
+        Inventory inv = screen("kitender", player, kit, 1, 27, "§9Kit " + kit + " §8» §bEnder Chest");
         ItemStack[] contents = readItems(playerData.getList(enderPath(player.getUniqueId(), kit), List.of()), 27);
         inv.setContents(contents);
         player.openInventory(inv);
@@ -280,7 +350,7 @@ public final class KitModule extends MineNightModule implements Listener {
     private void openRoom(Player player, int page, boolean staff) {
         int safePage = Math.max(1, Math.min(3, page));
         Inventory inv = screen(staff ? "staffroom" : "room", player, 0, safePage, 54,
-                (staff ? "§0Staff Kitroom" : "§0Shared Kitroom") + " §8- §7Page " + safePage + "/3");
+                (staff ? "§9Staff Kitroom" : "§9Shared Kitroom") + " §8» §bPage " + safePage + "/3");
         ItemStack[] saved = readItems(rooms.getList(roomPath(safePage), List.of()), 45);
         for (int i = 0; i < 45; i++) inv.setItem(i, saved[i]);
         for (int i = 45; i < 54; i++) inv.setItem(i, pane());
@@ -425,7 +495,7 @@ public final class KitModule extends MineNightModule implements Listener {
         Player player = event.getPlayer();
         int kit = activeKits.getOrDefault(player.getUniqueId(), 1);
         event.getClickedBlock().setType(Material.AIR, false);
-        Inventory inv = screen("regear", player, kit, 1, 27, "§0Regear");
+        Inventory inv = screen("regear", player, kit, 1, 27, "§9Regear");
         for (int i = 0; i < 27; i++) if (i != 13) inv.setItem(i, pane());
         inv.setItem(13, icon(Material.LIME_DYE, "Regear Now",
                 "§7Restock whitelisted kit items",
@@ -556,9 +626,20 @@ public final class KitModule extends MineNightModule implements Listener {
         Inventory top = event.getView().getTopInventory();
         if (!(top.getHolder() instanceof Screen screen)) return;
         int slot = event.getRawSlot();
+        if (screen.type.equals("main") || screen.type.equals("preview")) {
+            if (slot < 0 || slot >= top.getSize()) {
+                if (slot >= top.getSize() && (event.isShiftClick()
+                        || event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                        || event.getAction() == InventoryAction.COLLECT_TO_CURSOR)) {
+                    event.setCancelled(true);
+                }
+                return;
+            }
+        }
         switch (screen.type) {
             case "main" -> {
                 event.setCancelled(true);
+                if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) return;
                 if (slot == 30) {
                     repair(player);
                     openMain(player);
@@ -575,22 +656,25 @@ public final class KitModule extends MineNightModule implements Listener {
                 for (int i = 0; i < 9; i++) {
                     if (slot == KIT_CHEST_SLOTS[i]) {
                         int kit = i + 1;
-                        if (event.getClick() == ClickType.RIGHT || event.getClick() == ClickType.SHIFT_RIGHT) {
+                        if (event.getClick() == ClickType.RIGHT) {
                             openPreview(player, kit);
-                        } else {
+                        } else if (event.getClick() == ClickType.LEFT) {
                             loadKit(player, player.getUniqueId(), kit);
                             player.closeInventory();
                         }
                         return;
                     }
                     if (slot == KIT_ROOM_SLOTS[i]) {
-                        openKitEnder(player, i + 1);
+                        if (event.getClick() == ClickType.LEFT || event.getClick() == ClickType.RIGHT) {
+                            openKitEnder(player, i + 1);
+                        }
                         return;
                     }
                 }
             }
             case "preview" -> {
                 event.setCancelled(true);
+                if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) return;
                 if (slot == 49) {
                     recordKit(player, screen.kit);
                     activeKits.put(player.getUniqueId(), screen.kit);
@@ -614,7 +698,25 @@ public final class KitModule extends MineNightModule implements Listener {
 
                     if (slot < 45) {
                         ItemStack current = top.getItem(slot);
-                        if (current != null && !current.getType().isAir()) {
+                        if (current == null || current.getType().isAir()) return;
+                        if (event.getClick() == ClickType.NUMBER_KEY) {
+                            int targetSlot = event.getHotbarButton();
+                            if (targetSlot < 0 || targetSlot > 8) return;
+                            PlayerInventory inventory = player.getInventory();
+                            ItemStack replaced = inventory.getItem(targetSlot);
+                            if (replaced != null && !replaced.getType().isAir()) {
+                                int freeSlot = inventory.firstEmpty();
+                                if (freeSlot == -1) {
+                                    player.sendMessage(PREFIX + "Not enough inventory space to move the existing hotbar item.");
+                                    return;
+                                }
+                                inventory.setItem(freeSlot, replaced.clone());
+                            }
+                            inventory.setItem(targetSlot, current.clone());
+                            player.updateInventory();
+                            return;
+                        }
+                        if (event.getClick() == ClickType.LEFT || event.getClick() == ClickType.RIGHT) {
                             Map<Integer, ItemStack> extra = player.getInventory().addItem(current.clone());
                             if (!extra.isEmpty()) player.sendMessage(PREFIX + "Not enough inventory space.");
                         }

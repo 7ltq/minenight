@@ -90,7 +90,7 @@ public final class MineNightTotemMonitor extends MineNightModule implements List
     }
 
     private void alert(Player player, Sample sample, double average, double variance) {
-        String message = String.format(java.util.Locale.ROOT, "§8[§dMineNight§8] §ePossible AutoTotem: §f%s §7(mean %.2f ticks, variance %.3f, flags %d)", player.getName(), average, variance, sample.flags);
+        String message = String.format(java.util.Locale.ROOT, "§8[§9MineNight§8] §ePossible AutoTotem: §f%s §7(mean %.2f ticks, variance %.3f, flags %d)", player.getName(), average, variance, sample.flags);
         getLogger().warning(message.replaceAll("§[0-9a-fk-or]", ""));
         if (getConfig().getBoolean("alerts.staff", true)) for (Player staff : Bukkit.getOnlinePlayers()) {
             if (staff.hasPermission("minenight.totemmonitor.alerts")) staff.sendMessage(message);

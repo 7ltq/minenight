@@ -65,7 +65,7 @@ public final class MineNightSettings extends MineNightModule implements Listener
             return true;
         }
         if (args.length != 0) {
-            player.sendMessage(mini.deserialize("<gray>Usage: <white>/settings"));
+            player.sendMessage(mini.deserialize("<#B7C7E8>Usage: <white>/settings"));
             return true;
         }
         open(player);
@@ -74,7 +74,7 @@ public final class MineNightSettings extends MineNightModule implements Listener
 
     private void open(Player player) {
         SettingsHolder holder = new SettingsHolder();
-        Inventory inv = Bukkit.createInventory(holder, 9, mini.deserialize("<gradient:#8175AE:#D5DCE8><bold>MineNight Settings</bold></gradient>"));
+        Inventory inv = Bukkit.createInventory(holder, 9, mini.deserialize("<gradient:#4B63C4:#91B2FF><bold>MineNight Settings</bold></gradient>"));
         holder.inventory = inv;
         refresh(inv, player.getUniqueId());
         player.openInventory(inv);
@@ -95,8 +95,8 @@ public final class MineNightSettings extends MineNightModule implements Listener
     private ItemStack setting(Material material, String name, boolean enabled, String description) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mini.deserialize("<gradient:#8175AE:#D5DCE8><bold>" + name + "</bold></gradient>"));
-        meta.lore(List.of(mini.deserialize("<gray>" + description), Component.empty(), mini.deserialize(enabled ? "<green>Status: ON" : "<red>Status: OFF"), mini.deserialize("<yellow>Click to toggle")));
+        meta.displayName(mini.deserialize("<gradient:#4B63C4:#91B2FF><bold>" + name + "</bold></gradient>"));
+        meta.lore(List.of(mini.deserialize("<#B7C7E8>" + description), Component.empty(), mini.deserialize(enabled ? "<#91B2FF>Status: ON" : "<#6685E8>Status: OFF"), mini.deserialize("<#91B2FF>Click to toggle")));
         item.setItemMeta(meta);
         return item;
     }

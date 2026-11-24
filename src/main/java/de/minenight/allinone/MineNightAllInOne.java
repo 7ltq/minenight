@@ -16,15 +16,13 @@ public final class MineNightAllInOne extends JavaPlugin {
 
     @Override public void onEnable() {
         instance = this;
-        TeleportDiagnostics teleportDiagnostics = new TeleportDiagnostics(this);
-        getServer().getPluginManager().registerEvents(teleportDiagnostics, this);
-        getServer().getScheduler().runTask(this, teleportDiagnostics::dumpRegisteredListeners);
         register("perms", new de.minenightperms.MineNightPerms());
         register("tab", new de.minenight.tab.MineNightTab());
         register("performance", new de.minenight.performance.MineNightPerformance());
         register("entitycleanup", new de.minenight.performance.MineNightEntityCleanup());
         register("playeroptimizer", new de.minenight.playeroptimizer.MineNightPlayerOptimizer());
         register("totemmonitor", new de.minenight.totemmonitor.MineNightTotemMonitor());
+        register("totemsync", new de.minenight.totemsync.MineNightTotemSync());
         register("settings", new de.minenight.settings.MineNightSettings());
         register("moderation", new de.minenight.moderation.MineNightModeration());
         register("utility", new de.minenight.utility.MineNightUtility());
@@ -66,6 +64,10 @@ public final class MineNightAllInOne extends JavaPlugin {
                 error.printStackTrace();
             }
         }
+        MineNightVoteListener voting = new MineNightVoteListener(this);
+        voting.register();
+        var voteTotalCommand = getCommand("votetotal");
+        if (voteTotalCommand != null) voteTotalCommand.setExecutor(voting);
         MineNightTabCompleter suggestions = new MineNightTabCompleter();
         for (String name : java.util.List.of("tpa", "tpahere", "tpaccept", "tpadecline", "tpauto", "prac", "spawn", "minenighttab", "mnperf", "nomobs", "noblockdrops", "no", "rtpq", "settings", "back", "announcement", "playeroptimizer")) {
             var registered = getCommand(name);

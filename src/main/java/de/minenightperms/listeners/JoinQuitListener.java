@@ -24,7 +24,7 @@ public class JoinQuitListener implements Listener {
         }
         Player p = event.getPlayer();
         String msg = plugin.getConfig()
-            .getString("join.message", "<dark_gray>[<green>+<dark_gray>] <white>{player}")
+            .getString("join.message", "<#8298C4>[<#91B2FF>+<#8298C4>] <white>{player}")
             .replace("{player}", p.getName());
         event.joinMessage(MM.deserialize(msg));
     }
@@ -37,7 +37,7 @@ public class JoinQuitListener implements Listener {
         }
         Player p = event.getPlayer();
         String msg = plugin.getConfig()
-            .getString("quit.message", "<dark_gray>[<red>-<dark_gray>] <white>{player}")
+            .getString("quit.message", "<#8298C4>[<#6685E8>-<#8298C4>] <white>{player}")
             .replace("{player}", p.getName());
         event.quitMessage(MM.deserialize(msg));
     }

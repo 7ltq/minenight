@@ -1,5 +1,6 @@
 package de.minenight.allinone;
 
+import de.minenightperms.MineNightPerms;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -24,7 +25,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 /** Staff-only utilities. No constantly running scheduler unless a totem check is active. */
 public final class StaffToolsModule extends MineNightModule implements Listener {
-    private static final String PREFIX = "§8[§dMineNight§8] §7";
+    private static final String PREFIX = "§8[§9MineNight§8] §7";
     private static final long TOTEM_COOLDOWN_NANOS = 30_000_000_000L;
     private final Set<UUID> vanished = new HashSet<>();
     private final Map<UUID, FlightState> previousFlightStates = new HashMap<>();
@@ -199,16 +200,23 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
     private void setVanishedVisibility(Player viewer, Player target, boolean hide) {
         if (hide) {
             viewer.hidePlayer(core(), target);
-            // The nametag is a passenger TextDisplay, so hide passengers too to
-            // prevent a floating camera/name label from revealing a vanished player.
             for (Entity passenger : target.getPassengers()) {
                 viewer.hideEntity(core(), passenger);
             }
+            setNameTagVisible(viewer, target, false);
         } else {
             viewer.showPlayer(core(), target);
             for (Entity passenger : target.getPassengers()) {
                 viewer.showEntity(core(), passenger);
             }
+            setNameTagVisible(viewer, target, true);
+        }
+    }
+
+    private void setNameTagVisible(Player viewer, Player target, boolean visible) {
+        MineNightModule module = core().module("perms");
+        if (module instanceof MineNightPerms perms) {
+            perms.setNameTagVisible(viewer, target.getUniqueId(), visible);
         }
     }
 

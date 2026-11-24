@@ -50,7 +50,7 @@ public class GradientPresets {
         new GradientPreset("Gold Rush",     "<gradient:#FFD700:#FFA500:#FF8C00>",                             Material.GOLD_BLOCK),
         new GradientPreset("Toxic",         "<gradient:#39FF14:#00FF00:#008000>",                             Material.SLIME_BALL),
         new GradientPreset("Candy",         "<gradient:#FF6EC7:#FF69B4:#FF1493:#FF6EC7>",                    Material.SUGAR),
-        new GradientPreset("Storm",         "<gradient:#708090:#B0C4DE:#4682B4:#191970>",                    Material.LIGHTNING_ROD),
+        new GradientPreset("Storm",         "<gradient:#708090:#B0C4DE:#4B63C4:#191970>",                    Material.LIGHTNING_ROD),
         new GradientPreset("Autumn",        "<gradient:#FF4500:#FF6347:#FFA500:#FFD700>",                    Material.OAK_LEAVES),
         new GradientPreset("Aquamarine",    "<gradient:#7FFFD4:#00CED1:#1E90FF>",                            Material.PRISMARINE_CRYSTALS),
         new GradientPreset("Sakura",        "<gradient:#FFB7C5:#FF69B4:#DB7093>",                            Material.CHERRY_LEAVES),
@@ -62,7 +62,7 @@ public class GradientPresets {
 
         new GradientPreset("Neon",          "<gradient:#FF00FF:#00FFFF:#FF00FF>",                            Material.GLOWSTONE),
         new GradientPreset("Royal",         "<gradient:#6A0DAD:#9B30FF:#FFD700>",                            Material.AMETHYST_SHARD),
-        new GradientPreset("Arctic",        "<gradient:#E0FFFF:#B0E0E6:#87CEEB:#4682B4>",                   Material.BLUE_ICE),
+        new GradientPreset("Arctic",        "<gradient:#E0FFFF:#B0E0E6:#87CEEB:#4B63C4>",                   Material.BLUE_ICE),
         new GradientPreset("Cyber",         "<gradient:#00FF41:#39FF14:#00BFFF>",                            Material.LIME_STAINED_GLASS),
         new GradientPreset("Nebula",        "<gradient:#FF00FF:#4B0082:#0000FF:#00BFFF>",                    Material.PURPLE_STAINED_GLASS),
         new GradientPreset("Inferno",       "<gradient:#FFFF00:#FF4500:#8B0000>",                            Material.FIRE_CHARGE),
@@ -238,7 +238,7 @@ public class GradientPresets {
         new GradientPreset("Molten Gold",   "<gradient:#FF8C00:#FFD700:#FF6600:#FFD700>",                   Material.GOLD_INGOT),
         new GradientPreset("Ingot",         "<gradient:#C0C0C0:#A0A0A0:#808080:#C0C0C0>",                  Material.IRON_INGOT),
         new GradientPreset("Electrum",      "<gradient:#DFC97F:#D4AF37:#C9A22A:#DFC97F>",                   Material.GOLD_NUGGET),
-        new GradientPreset("Steel Blue",    "<gradient:#4682B4:#5B9BD5:#4682B4:#36729F>",                   Material.BLUE_GLAZED_TERRACOTTA),
+        new GradientPreset("Steel Blue",    "<gradient:#4B63C4:#91B2FF:#4B63C4:#36729F>",                   Material.BLUE_GLAZED_TERRACOTTA),
         new GradientPreset("Polished",      "<gradient:#EEEEEE:#DDDDDD:#CCCCCC:#EEEEEE>",                  Material.QUARTZ_BLOCK),
         new GradientPreset("Gunmetal",      "<gradient:#2a3439:#3d4e54:#2a3439:#1e2d32>",                   Material.GRAY_STAINED_GLASS),
         new GradientPreset("Flux",          "<gradient:#FF4500:#FF8C00:#FFD700:#FF8C00:#FF4500>",           Material.MAGMA_CREAM),
@@ -267,7 +267,7 @@ public class GradientPresets {
         new GradientPreset("🐯 Tiger",        "<gradient:#FF8C00:#FF6600:#FF4500>",                         Material.ORANGE_TERRACOTTA),
         new GradientPreset("🌋 Volcano",      "<gradient:#8B0000:#FF4500:#FFD700>",                         Material.MAGMA_BLOCK),
         new GradientPreset("⛰ Mountain",      "<gradient:#808080:#A8A8A8:#D0D0D0>",                         Material.STONE),
-        new GradientPreset("🌪 Tornado",       "<gradient:#B0C4DE:#708090:#4682B4>",                        Material.COBWEB),
+        new GradientPreset("🌪 Tornado",       "<gradient:#B0C4DE:#708090:#4B63C4>",                        Material.COBWEB),
         new GradientPreset("💠 Crystal",      "<gradient:#00BFFF:#7DF9FF:#FFFFFF>",                         Material.DIAMOND),
         new GradientPreset("☀ Solar",         "<gradient:#FF8C00:#FFD700:#FFFACD>",                         Material.GLOWSTONE),
         new GradientPreset("🌌 Cosmos",       "<gradient:#000033:#191970:#4B0082:#9400D3>",                 Material.END_CRYSTAL),
@@ -289,7 +289,7 @@ public class GradientPresets {
         new GradientPreset("🌑 Dark Moon",    "<gradient:#1A1A2E:#16213E:#0F3460>",                         Material.BLACK_CONCRETE),
         new GradientPreset("🎖 Commander",    "<gradient:#8B6914:#B8860B:#DAA520>",                         Material.GOLDEN_CHESTPLATE),
         new GradientPreset("🔭 Explorer",     "<gradient:#4169E1:#00BFFF:#87CEEB>",                         Material.SPYGLASS),
-        new GradientPreset("🧊 Cryo",         "<gradient:#E0FFFF:#B0E0E6:#87CEEB:#4682B4>",                Material.ICE),
+        new GradientPreset("🧊 Cryo",         "<gradient:#E0FFFF:#B0E0E6:#87CEEB:#4B63C4>",                Material.ICE),
         new GradientPreset("🌶 Spice",        "<gradient:#FF4500:#CC3300:#990000>",                         Material.RED_DYE),
         new GradientPreset("🎸 Rockstar",     "<gradient:#FF00FF:#AA00FF:#5500FF>",                         Material.JUKEBOX),
         new GradientPreset("🧬 Bio",          "<gradient:#00FF7F:#00CC66:#009933>",                         Material.LIME_DYE),
@@ -459,14 +459,14 @@ public class GradientPresets {
 
         // MineNight role/name colors based on the supplied in-game references.
         // These presets are available in BOTH the role-prefix and player-name pickers.
-        new GradientPreset("Owner Cyan",          "#16ACCF",                            Material.CYAN_DYE),
-        new GradientPreset("SR Admin Red",        "#E63B0C",                            Material.RED_DYE),
+        new GradientPreset("Owner Cyan",          "#91B2FF",                            Material.CYAN_DYE),
+        new GradientPreset("SR Admin Red",        "#4B63C4",                            Material.RED_DYE),
         new GradientPreset("Dev Admin Purple",    "<gradient:#7617A8:#A20B9A:#D31986>", Material.PURPLE_DYE),
-        new GradientPreset("SR Admin Name Gold",  "#E9B833",                            Material.GOLD_INGOT),
-        new GradientPreset("Napooo Aqua",         "#01FCE7",                            Material.PRISMARINE_CRYSTALS),
-        new GradientPreset("SR Mod Green",        "#02F939",                            Material.LIME_DYE),
-        new GradientPreset("Media Pink",          "#E52DBB",                            Material.PINK_DYE),
-        new GradientPreset("Media Cyan",          "#00C8F0",                            Material.CYAN_DYE)
+        new GradientPreset("SR Admin Name Gold",  "#91B2FF",                            Material.GOLD_INGOT),
+        new GradientPreset("Napooo Aqua",         "#91B2FF",                            Material.PRISMARINE_CRYSTALS),
+        new GradientPreset("SR Mod Green",        "#6685E8",                            Material.LIME_DYE),
+        new GradientPreset("Media Pink",          "#6685E8",                            Material.PINK_DYE),
+        new GradientPreset("Media Cyan",          "#91B2FF",                            Material.CYAN_DYE)
     );
 
     public static final List<GradientPreset> GRADIENTS = PRESETS.stream()

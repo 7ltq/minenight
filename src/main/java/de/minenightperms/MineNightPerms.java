@@ -23,14 +23,6 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
-        // Migrate the formerly disabled gradient nametag default once. Afterwards
-        // administrators can freely change this value without it being reset.
-        if (!getConfig().getBoolean("nametags.gradient-migration-1-7-0", false)) {
-            getConfig().set("nametags.full-gradients", true);
-            getConfig().set("nametags.gradient-migration-1-7-0", true);
-            saveConfig();
-        }
-
         groupManager      = new GroupManager(this);
         playerDataManager = new PlayerDataManager(this);
         guiListener       = new GuiListener(this);
@@ -98,6 +90,10 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
         if (groupManager == null || playerDataManager == null) return false;
         String groupName = playerDataManager.getPlayerData(id).getGroupName();
         return "media".equalsIgnoreCase(groupName);
+    }
+
+    public void setNameTagVisible(org.bukkit.entity.Player viewer, java.util.UUID playerId, boolean visible) {
+        if (nameTagManager != null) nameTagManager.setVisibleTo(viewer, playerId, visible);
     }
 
     public static MineNightPerms   getInstance()          { return instance; }

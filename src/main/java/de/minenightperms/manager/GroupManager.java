@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class GroupManager {
 
-    private static final String MEDIA_PREFIX = "<#E52DBB>📹</#E52DBB><#00C8F0>+</#00C8F0>";
+    private static final String MEDIA_PREFIX = "<#6685E8>📹</#6685E8><#91B2FF>+</#91B2FF>";
 
     
     public static final List<String> DEFAULT_PERMISSIONS = List.of(
@@ -69,9 +69,9 @@ public class GroupManager {
         boolean mediaChanged = false;
         if (media == null) {
             media = new Group("Media");
-            media.setRoleGradient("#E52DBB");
+            media.setRoleGradient("#6685E8");
             media.setRoleBold(false);
-            media.setNameGradient("#E52DBB");
+            media.setNameGradient("#6685E8");
             media.setNameBold(false);
             media.setPrefix(MEDIA_PREFIX);
             media.setPriority(25);
@@ -95,13 +95,13 @@ public class GroupManager {
             if (media.getRoleGradient() == null
                     || media.getRoleGradient().isBlank()
                     || media.getRoleGradient().equalsIgnoreCase("white")) {
-                media.setRoleGradient("#E52DBB");
+                media.setRoleGradient("#6685E8");
                 mediaChanged = true;
             }
             if (media.getNameGradient() == null
                     || media.getNameGradient().isBlank()
                     || media.getNameGradient().equalsIgnoreCase("white")) {
-                media.setNameGradient("#E52DBB");
+                media.setNameGradient("#6685E8");
                 mediaChanged = true;
             }
         }

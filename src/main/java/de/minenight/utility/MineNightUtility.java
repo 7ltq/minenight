@@ -49,6 +49,7 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         getCommand("announcement").setExecutor(this);
         getCommand("discord").setExecutor(this);
         getCommand("website").setExecutor(this);
+        getCommand("vote").setExecutor(this);
         Bukkit.getPluginManager().registerEvents(this, core());
     }
 
@@ -111,14 +112,37 @@ public final class MineNightUtility extends MineNightModule implements Listener 
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmd = command.getName().toLowerCase(java.util.Locale.ROOT);
+        if (cmd.equals("vote")) {
+            sender.sendMessage(mm.deserialize("<gradient:#4682B4:#91C8FF><bold>MineNight Votes</bold></gradient> <gray>» <white>Support our server:</white>"));
+            String[][] sites = {
+                    {"Minecraft.buzz", "https://minecraft.buzz/vote/minenight"},
+                    {"MinecraftServers", "https://minecraftservers.org/vote/696400"},
+                    {"Minecraft-MP", "https://minecraft-mp.com/server/367126/vote/"},
+                    {"MinecraftIPList", "https://www.minecraftiplist.com/server/minenight-45795"}
+            };
+            for (int i = 0; i < sites.length; i++) {
+                String name = sites[i][0];
+                String url = sites[i][1];
+                sender.sendMessage(net.kyori.adventure.text.Component.text("  " + (i + 1) + ". " + name + "  ")
+                        .color(net.kyori.adventure.text.format.TextColor.color(0xDAEFFF))
+                        .append(net.kyori.adventure.text.Component.text("[VOTE]")
+                                .color(net.kyori.adventure.text.format.TextColor.color(0x91C8FF))
+                                .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                                .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(url))
+                                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                                        net.kyori.adventure.text.Component.text("Open " + name + " in your browser")))));
+            }
+            sender.sendMessage(mm.deserialize("<gray>Use <#91C8FF>/votetotal</#91C8FF> to view confirmed votes. Thanks for supporting MineNight!</gray>"));
+            return true;
+        }
         if (cmd.equals("discord") || cmd.equals("website")) {
             String url = getConfig().getString("links." + cmd,
                     cmd.equals("discord") ? "https://discord.com/invite/mXjqNYF4b6" : "https://minenight.de");
             if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) {
-                sender.sendMessage(mm.deserialize("<red>This link is not configured correctly."));
+                sender.sendMessage(mm.deserialize("<#6685E8>This link is not configured correctly."));
                 return true;
             }
-            sender.sendMessage(mm.deserialize("<gradient:#8175AE:#D5DCE8><bold>MineNight</bold></gradient> <dark_gray>» <gray>" +
+            sender.sendMessage(mm.deserialize("<gradient:#4B63C4:#91B2FF><bold>MineNight</bold></gradient> <#8298C4>» <#B7C7E8>" +
                     (cmd.equals("discord") ? "Discord: " : "Website: "))
                     .append(net.kyori.adventure.text.Component.text(url)
                             .color(net.kyori.adventure.text.format.NamedTextColor.AQUA)
@@ -128,15 +152,15 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         if (cmd.equals("back")) {
             if (!(sender instanceof Player player)) { sender.sendMessage("Player only."); return true; }
             if (!sender.hasPermission("minenight.back")) { sender.sendMessage("You do not have permission."); return true; }
-            if (player.getScoreboardTags().contains("minenight_rtpq_duel")) { player.sendMessage(mm.deserialize("<red>You cannot use /back during a duel.")); return true; }
+            if (player.getScoreboardTags().contains("minenight_rtpq_duel")) { player.sendMessage(mm.deserialize("<#6685E8>You cannot use /back during a duel.")); return true; }
             UUID playerId = player.getUniqueId();
             Location location = resolveSavedLocation(playerId);
             if (location == null || location.getWorld() == null) {
-                player.sendMessage(mm.deserialize("<red>No return location saved."));
+                player.sendMessage(mm.deserialize("<#6685E8>No return location saved."));
                 return true;
             }
             if (!backInProgress.add(playerId)) {
-                player.sendMessage(mm.deserialize("<yellow>Your /back teleport is already in progress."));
+                player.sendMessage(mm.deserialize("<#91B2FF>Your /back teleport is already in progress."));
                 return true;
             }
             player.teleportAsync(location.clone(), PlayerTeleportEvent.TeleportCause.COMMAND).whenComplete((success, error) -> {
@@ -144,9 +168,9 @@ public final class MineNightUtility extends MineNightModule implements Listener 
                 Bukkit.getScheduler().runTask(core(), () -> {
                     if (!player.isOnline()) return;
                     if (error == null && Boolean.TRUE.equals(success)) {
-                        player.sendMessage(mm.deserialize("<gradient:#8175AE:#D5DCE8>Returned to your previous location.</gradient>"));
+                        player.sendMessage(mm.deserialize("<gradient:#4B63C4:#91B2FF>Returned to your previous location.</gradient>"));
                     } else {
-                        player.sendMessage(mm.deserialize("<red>Could not teleport to your saved return location."));
+                        player.sendMessage(mm.deserialize("<#6685E8>Could not teleport to your saved return location."));
                     }
                 });
             });
@@ -155,7 +179,7 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         if (!sender.hasPermission("minenight.announcement")) { sender.sendMessage("You do not have permission."); return true; }
         if (args.length == 0) { sender.sendMessage("Usage: /announcement <message>"); return true; }
         String message = String.join(" ", args).replace("\\", "\\\\").replace("<", "\\<").replace(">", "\\>");
-        String main = getConfig().getString("announcement.title", "<gradient:#8175AE:#D5DCE8><bold>Announcement</bold></gradient>");
+        String main = getConfig().getString("announcement.title", "<gradient:#4B63C4:#91B2FF><bold>Announcement</bold></gradient>");
         String subtitle = getConfig().getString("announcement.subtitle-format", "<white>{message}").replace("{message}", message);
         Title title = Title.title(mm.deserialize(main), mm.deserialize(subtitle), Title.Times.times(Duration.ofMillis(350), Duration.ofSeconds(getConfig().getLong("announcement.duration-seconds", 5)), Duration.ofMillis(600)));
         for (Player player : Bukkit.getOnlinePlayers()) {

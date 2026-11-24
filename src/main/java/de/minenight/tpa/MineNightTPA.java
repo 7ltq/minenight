@@ -161,12 +161,12 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
         requests.put(pair, request);
         send(sender, here ? "sent-here" : "sent", "{player}", receiver.getName());
         send(receiver, here ? "received-here" : "received", "{player}", sender.getName());
-        Component accept = mini.deserialize(getConfig().getString("messages.accept-button", "<green><bold>[ACCEPT]</bold></green>"))
+        Component accept = mini.deserialize(getConfig().getString("messages.accept-button", "<#91B2FF><bold>[ACCEPT]</bold></#91B2FF>"))
                 .clickEvent(ClickEvent.runCommand("/tpaccept " + sender.getName()))
-                .hoverEvent(HoverEvent.showText(mini.deserialize("<gray>Click to accept the request")));
-        Component decline = mini.deserialize(getConfig().getString("messages.decline-button", "<red><bold>[DECLINE]</bold></red>"))
+                .hoverEvent(HoverEvent.showText(mini.deserialize("<#B7C7E8>Click to accept the request")));
+        Component decline = mini.deserialize(getConfig().getString("messages.decline-button", "<#6685E8><bold>[DECLINE]</bold></#6685E8>"))
                 .clickEvent(ClickEvent.runCommand("/tpadecline " + sender.getName()))
-                .hoverEvent(HoverEvent.showText(mini.deserialize("<gray>Click to decline the request")));
+                .hoverEvent(HoverEvent.showText(mini.deserialize("<#B7C7E8>Click to decline the request")));
         receiver.sendMessage(accept.append(Component.space()).append(decline));
     }
 
@@ -249,9 +249,16 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
     }
 
     private void send(CommandSender target, String key, String... replacements) {
-        String value = getConfig().getString("messages." + key, "<gray>" + key);
+        String value = getConfig().getString("messages." + key);
+        if (value == null || value.isBlank()) {
+            value = switch (key) {
+                case "received" -> "<white>{player} <#B7C7E8>wants to teleport to you.";
+                case "received-here" -> "<white>{player} <#B7C7E8>wants you to teleport to them.";
+                default -> "<#B7C7E8>" + key;
+            };
+        }
         for (int i = 0; i + 1 < replacements.length; i += 2) value = value.replace(replacements[i], replacements[i + 1]);
-        String prefix = getConfig().getString("messages.prefix", "<gradient:#8175AE:#D5DCE8><bold>MineNight</bold></gradient> <dark_gray>» <reset>");
+        String prefix = getConfig().getString("messages.prefix", "<gradient:#4B63C4:#91B2FF><bold>MineNight</bold></gradient> <#8298C4>» <reset>");
         target.sendMessage(mini.deserialize(prefix + value));
     }
 }

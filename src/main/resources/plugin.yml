@@ -11,6 +11,8 @@ softdepend:
 - voicechat
 - WorldEdit
 - FastAsyncWorldEdit
+- Votifier
+- NuVotifier
 commands:
   vanish:
     description: Toggle staff invisibility to regular players.
@@ -178,6 +180,14 @@ commands:
   website:
     description: Show a clickable link to the MineNight website
     usage: /website
+    permission: minenight.links.use
+  vote:
+    description: Show MineNight server voting sites.
+    usage: /vote
+    permission: minenight.links.use
+  votetotal:
+    description: Show your confirmed Votifier vote total.
+    usage: /votetotal [player]
     permission: minenight.links.use
   rtp:
     description: Random teleport to Plains by default, or select a biome

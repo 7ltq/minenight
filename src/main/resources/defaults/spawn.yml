@@ -10,10 +10,10 @@ settings:
   override-respawn-location: true
   spawn-command-allowed-during-combat: false
 messages:
-  prefix: '<gradient:#8175AE:#D5DCE8>MineNight</gradient> <dark_gray>» '
-  set: '<green>Practice spawn has been set.'
-  arrived: '<gray>Teleported to spawn.'
-  no-spawn: '<red>Spawn world is not loaded.'
-  no-permission: '<red>You do not have permission.'
-  usage: '<gray>Usage: /prac spawn set here'
-  combat: '<red>You cannot use /spawn while fighting.'
+  prefix: '<gradient:#4B63C4:#91B2FF>MineNight</gradient> <#8298C4>» '
+  set: '<#91B2FF>Practice spawn has been set.'
+  arrived: '<#B7C7E8>Teleported to spawn.'
+  no-spawn: '<#6685E8>Spawn world is not loaded.'
+  no-permission: '<#6685E8>You do not have permission.'
+  usage: '<#B7C7E8>Usage: /prac spawn set here'
+  combat: '<#6685E8>You cannot use /spawn while fighting.'

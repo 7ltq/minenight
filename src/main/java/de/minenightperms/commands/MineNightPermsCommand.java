@@ -35,36 +35,36 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             if (!(sender instanceof Player player)) { sendHelp(sender); return true; }
             if (!player.hasPermission("minenightperms.admin")) {
-                player.sendMessage(MM.deserialize("<red>No permission!")); return true;
+                player.sendMessage(MM.deserialize("<#6685E8>No permission!")); return true;
             }
             plugin.getGuiListener().openMainMenu(player);
             return true;
         }
 
         if (!sender.hasPermission("minenightperms.admin")) {
-            sender.sendMessage(MM.deserialize("<red>No permission!")); return true;
+            sender.sendMessage(MM.deserialize("<#6685E8>No permission!")); return true;
         }
 
         if (args[0].equalsIgnoreCase("reload")) {
             plugin.reloadConfig();
             plugin.getGroupManager().loadGroups();
             plugin.getPlayerDataManager().loadPlayers();
-            sender.sendMessage(MM.deserialize("<green>✔ MineNightPerms reloaded!"));
+            sender.sendMessage(MM.deserialize("<#91B2FF>✔ MineNightPerms reloaded!"));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length != 2 || !args[1].matches("[A-Za-z0-9_-]{1,32}")) {
-                sender.sendMessage(MM.deserialize("<red>Usage: /mnperms create <name> (letters, numbers, _ or -)"));
+                sender.sendMessage(MM.deserialize("<#6685E8>Usage: /mnperms create <name> (letters, numbers, _ or -)"));
                 return true;
             }
             String name = args[1];
             if (plugin.getGroupManager().groupExists(name)) {
-                sender.sendMessage(MM.deserialize("<red>This group already exists."));
+                sender.sendMessage(MM.deserialize("<#6685E8>This group already exists."));
                 return true;
             }
             plugin.getGroupManager().createGroup(name);
-            sender.sendMessage(MM.deserialize("<green>Group created: <white>" + name));
+            sender.sendMessage(MM.deserialize("<#91B2FF>Group created: <white>" + name));
             if (sender instanceof Player player) {
                 plugin.getGuiListener().openGroupList(player);
             }
@@ -75,7 +75,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
             String groupName = args[1];
             if (!plugin.getGroupManager().groupExists(groupName)) {
                 sender.sendMessage(MM.deserialize(
-                    "<red>Group <white>" + groupName + "<red> not found!"));
+                    "<#6685E8>Group <white>" + groupName + "<#6685E8> not found!"));
                 return true;
             }
             Group g = plugin.getGroupManager().getGroup(groupName);
@@ -90,7 +90,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
 
             if (sub.equals("setprefix")) {
                 if (args.length < 4) {
-                    sender.sendMessage(MM.deserialize("<red>Usage: /minenightperms group <group> setprefix <text>"));
+                    sender.sendMessage(MM.deserialize("<#6685E8>Usage: /minenightperms group <group> setprefix <text>"));
                     return true;
                 }
 
@@ -98,19 +98,19 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 g.setPrefix(prefix);
                 plugin.getGroupManager().saveGroups();
                 sender.sendMessage(MM.deserialize(
-                    "<green>✔ Prefix for <white>" + groupName + "<green> set to: <white>" + prefix));
+                    "<#91B2FF>✔ Prefix for <white>" + groupName + "<#91B2FF> set to: <white>" + prefix));
                 return true;
             }
 
             if (sub.equals("setemoji")) {
                 if (args.length < 4) {
-                    sender.sendMessage(MM.deserialize("<red>Usage: /mnperms group <name> setemoji <text>"));
+                    sender.sendMessage(MM.deserialize("<#6685E8>Usage: /mnperms group <name> setemoji <text>"));
                     return true;
                 }
                 String emoji = String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length));
                 g.setEmoji(emoji);
                 plugin.getGroupManager().saveGroups();
-                sender.sendMessage(MM.deserialize("<green>Symbol updated for <white>" + groupName));
+                sender.sendMessage(MM.deserialize("<#91B2FF>Symbol updated for <white>" + groupName));
                 return true;
             }
 
@@ -119,8 +119,8 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 g.setPrefix("");
                 plugin.getGroupManager().saveGroups();
                 sender.sendMessage(MM.deserialize(
-                    "<green>✔ Prefix cleared for <white>" + groupName +
-                    "<green> (now uses group name)"));
+                    "<#91B2FF>✔ Prefix cleared for <white>" + groupName +
+                    "<#91B2FF> (now uses group name)"));
                 return true;
             }
 
@@ -128,7 +128,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
             if (sub.equals("setcolor") && args.length >= 5) {
                 String target = args[3].toLowerCase();
                 if (!target.equals("role") && !target.equals("name")) {
-                    sender.sendMessage(MM.deserialize("<red>Usage: /minenightperms group <group> setcolor role|name <color>"));
+                    sender.sendMessage(MM.deserialize("<#6685E8>Usage: /minenightperms group <group> setcolor role|name <color>"));
                     return true;
                 }
 
@@ -136,11 +136,11 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 if (target.equals("role")) {
                     g.setRoleGradient(color);
                     sender.sendMessage(MM.deserialize(
-                        "<green>✔ Role color for <white>" + groupName + "<green> set to: <white>" + color));
+                        "<#91B2FF>✔ Role color for <white>" + groupName + "<#91B2FF> set to: <white>" + color));
                 } else {
                     g.setNameGradient(color);
                     sender.sendMessage(MM.deserialize(
-                        "<green>✔ Name color for <white>" + groupName + "<green> set to: <white>" + color));
+                        "<#91B2FF>✔ Name color for <white>" + groupName + "<#91B2FF> set to: <white>" + color));
                 }
                 plugin.getGroupManager().saveGroups();
                 return true;
@@ -150,7 +150,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
             if (sub.equals("setbold") && args.length >= 4) {
                 String target = args[3].toLowerCase();
                 if (!target.equals("role") && !target.equals("name")) {
-                    sender.sendMessage(MM.deserialize("<red>Usage: /minenightperms group <group> setbold role|name [true|false]"));
+                    sender.sendMessage(MM.deserialize("<#6685E8>Usage: /minenightperms group <group> setbold role|name [true|false]"));
                     return true;
                 }
                 boolean value;
@@ -163,29 +163,29 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 if (target.equals("role")) {
                     g.setRoleBold(value);
                     sender.sendMessage(MM.deserialize(
-                        "<green>✔ Role bold for <white>" + groupName + "<green>: " + (value ? "<green>ON" : "<red>OFF")));
+                        "<#91B2FF>✔ Role bold for <white>" + groupName + "<#91B2FF>: " + (value ? "<#91B2FF>ON" : "<#6685E8>OFF")));
                 } else {
                     g.setNameBold(value);
                     sender.sendMessage(MM.deserialize(
-                        "<green>✔ Name bold for <white>" + groupName + "<green>: " + (value ? "<green>ON" : "<red>OFF")));
+                        "<#91B2FF>✔ Name bold for <white>" + groupName + "<#91B2FF>: " + (value ? "<#91B2FF>ON" : "<#6685E8>OFF")));
                 }
                 plugin.getGroupManager().saveGroups();
                 return true;
             }
 
             if (sub.equals("info")) {
-                sender.sendMessage(MM.deserialize("<gradient:#8175AE:#D5DCE8><bold>══ Group: " + g.getName() + " ══</bold></gradient>"));
-                sender.sendMessage(MM.deserialize("<gray>Priority:    <white>" + g.getPriority()));
-                sender.sendMessage(MM.deserialize("<gray>Prefix:      <white>" + (g.getPrefix().isBlank() ? "(group name)" : g.getPrefix())));
-                sender.sendMessage(MM.deserialize("<gray>Emoji:       <white>" + (g.getEmoji().isBlank() ? "(none)" : g.getEmoji())));
-                sender.sendMessage(MM.deserialize("<gray>Role color:  <white>" + g.getRoleGradient()));
-                sender.sendMessage(MM.deserialize("<gray>Role bold:   <white>" + g.isRoleBold()));
-                sender.sendMessage(MM.deserialize("<gray>Name color:  <white>" + g.getNameGradient()));
-                sender.sendMessage(MM.deserialize("<gray>Name bold:   <white>" + g.isNameBold()));
-                sender.sendMessage(MM.deserialize("<gray>Permissions: <white>" + g.getPermissions().size()));
+                sender.sendMessage(MM.deserialize("<gradient:#4B63C4:#91B2FF><bold>══ Group: " + g.getName() + " ══</bold></gradient>"));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Priority:    <white>" + g.getPriority()));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Prefix:      <white>" + (g.getPrefix().isBlank() ? "(group name)" : g.getPrefix())));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Emoji:       <white>" + (g.getEmoji().isBlank() ? "(none)" : g.getEmoji())));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Role color:  <white>" + g.getRoleGradient()));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Role bold:   <white>" + g.isRoleBold()));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Name color:  <white>" + g.getNameGradient()));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Name bold:   <white>" + g.isNameBold()));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>Permissions: <white>" + g.getPermissions().size()));
                 String preview = g.getFormattedRole();
                 if (!preview.isEmpty()) {
-                    sender.sendMessage(MM.deserialize("<gray>Preview:     " + preview + " <white>PlayerName"));
+                    sender.sendMessage(MM.deserialize("<#B7C7E8>Preview:     " + preview + " <white>PlayerName"));
                 }
                 return true;
             }
@@ -198,10 +198,10 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 && args[1].equalsIgnoreCase("set") && args[2].equalsIgnoreCase("role")) {
             Player target = Bukkit.getPlayer(args[3]);
             String group  = args[4];
-            if (target == null) { sender.sendMessage(MM.deserialize("<red>Player not found!")); return true; }
-            if (!plugin.getGroupManager().groupExists(group)) { sender.sendMessage(MM.deserialize("<red>Group not found!")); return true; }
+            if (target == null) { sender.sendMessage(MM.deserialize("<#6685E8>Player not found!")); return true; }
+            if (!plugin.getGroupManager().groupExists(group)) { sender.sendMessage(MM.deserialize("<#6685E8>Group not found!")); return true; }
             plugin.getPlayerDataManager().setPlayerGroup(target.getUniqueId(), group.toLowerCase());
-            sender.sendMessage(MM.deserialize("<green>✔ <white>" + target.getName() + "<green> → <white>" + group));
+            sender.sendMessage(MM.deserialize("<#91B2FF>✔ <white>" + target.getName() + "<#91B2FF> → <white>" + group));
             return true;
         }
 
@@ -222,7 +222,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
                 g.setPermissions(all);
                 plugin.getGroupManager().saveGroups();
                 sender.sendMessage(MM.deserialize(
-                    "<green>✔ Set ALL <white>" + all.size() + "<green> permissions to <white>" + groupName));
+                    "<#91B2FF>✔ Set ALL <white>" + all.size() + "<#91B2FF> permissions to <white>" + groupName));
                 return true;
             }
 
@@ -230,13 +230,13 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
             if (value) {
                 if (!perms.contains(permArg)) {
                     perms.add(permArg);
-                    sender.sendMessage(MM.deserialize("<green>✔ Added <white>" + permArg + "<green> to <white>" + groupName));
+                    sender.sendMessage(MM.deserialize("<#91B2FF>✔ Added <white>" + permArg + "<#91B2FF> to <white>" + groupName));
                 } else {
-                    sender.sendMessage(MM.deserialize("<yellow>Already has <white>" + permArg));
+                    sender.sendMessage(MM.deserialize("<#91B2FF>Already has <white>" + permArg));
                 }
             } else {
                 perms.remove(permArg);
-                sender.sendMessage(MM.deserialize("<green>✔ Removed <white>" + permArg + "<green> from <white>" + groupName));
+                sender.sendMessage(MM.deserialize("<#91B2FF>✔ Removed <white>" + permArg + "<#91B2FF> from <white>" + groupName));
             }
             g.setPermissions(perms);
             plugin.getGroupManager().saveGroups();
@@ -248,18 +248,18 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
             perms.remove(args[4]);
             g.setPermissions(perms);
             plugin.getGroupManager().saveGroups();
-            sender.sendMessage(MM.deserialize("<green>✔ Removed <white>" + args[4] + "<green> from <white>" + groupName));
+            sender.sendMessage(MM.deserialize("<#91B2FF>✔ Removed <white>" + args[4] + "<#91B2FF> from <white>" + groupName));
             return true;
         }
 
         if (sub.equals("info")) {
             List<String> perms = g.getPermissions();
-            sender.sendMessage(MM.deserialize("<gold>══ Permissions: <white>" + groupName + " <gold>(" + perms.size() + ") ══"));
+            sender.sendMessage(MM.deserialize("<#91B2FF>══ Permissions: <white>" + groupName + " <#91B2FF>(" + perms.size() + ") ══"));
             if (perms.isEmpty()) {
-                sender.sendMessage(MM.deserialize("<gray>  No permissions set."));
+                sender.sendMessage(MM.deserialize("<#B7C7E8>  No permissions set."));
             } else {
                 for (String p : perms)
-                    sender.sendMessage(MM.deserialize("<green>  + <white>" + p));
+                    sender.sendMessage(MM.deserialize("<#91B2FF>  + <white>" + p));
             }
             return true;
         }
@@ -290,20 +290,20 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
 
 
     private void sendHelp(CommandSender s) {
-        s.sendMessage(MM.deserialize("<gradient:#8175AE:#D5DCE8><bold>══ MineNightPerms Help ══</bold></gradient>"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms <gray>- Open GUI"));
-        s.sendMessage(MM.deserialize("<yellow>/mnperms create <name> <gray>- Create a group"));
-        s.sendMessage(MM.deserialize("<yellow>/mnperms group <name> setemoji <text>"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms reload <gray>- Reload full config"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> info"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> setprefix <text>"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> clearprefix"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> setcolor role|name <color|preset>"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> setbold role|name [true|false]"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> permission set <perm|all> [true/false]"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> permission unset <perm>"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms group <g> permission info"));
-        s.sendMessage(MM.deserialize("<yellow>/minenightperms player set role <player> <group>"));
+        s.sendMessage(MM.deserialize("<gradient:#4B63C4:#91B2FF><bold>══ MineNightPerms Help ══</bold></gradient>"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms <#B7C7E8>- Open GUI"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/mnperms create <name> <#B7C7E8>- Create a group"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/mnperms group <name> setemoji <text>"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms reload <#B7C7E8>- Reload full config"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> info"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> setprefix <text>"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> clearprefix"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> setcolor role|name <color|preset>"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> setbold role|name [true|false]"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> permission set <perm|all> [true/false]"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> permission unset <perm>"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms group <g> permission info"));
+        s.sendMessage(MM.deserialize("<#91B2FF>/minenightperms player set role <player> <group>"));
     }
 
 

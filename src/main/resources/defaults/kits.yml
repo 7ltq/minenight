@@ -1,3 +1,9 @@
+death:
+  auto-respawn: true
+  auto-equip-kit-1: true
+  compact-drops: true
+  drop-spread-radius: 1.5
+
 regear:
   combat-delay-seconds: 10
   whitelist:

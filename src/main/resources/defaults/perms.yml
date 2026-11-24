@@ -1,19 +1,16 @@
 chat:
   enabled: true
-  format-with-role: "{role} {name} <white>» {message}"
-  format-default: "{name} <white>» {message}"
+  format-with-role: "{role} {name} <#91B2FF>» <white>{message}"
+  format-default: "{name} <#91B2FF>» <white>{message}"
 
 join:
   enabled: true
-  message: "<dark_gray>[<green>+<dark_gray>] <white>{player}"
+  message: "<#8298C4>[<#91B2FF>+<#8298C4>] <white>{player}"
 
 quit:
   enabled: true
-  message: "<dark_gray>[<red>-<dark_gray>] <white>{player}"
+  message: "<#8298C4>[<#6685E8>-<#8298C4>] <white>{player}"
 
 groups: {}
 players: {}
 
-nametags:
-  full-gradients: true
-  height-offset: 0.0

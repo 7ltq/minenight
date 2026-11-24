@@ -192,8 +192,8 @@ public final class MineNightRTPQueue extends de.minenight.allinone.MineNightModu
     }
     private void start(Player a,Player b,Location first,Location second) {
         if (!validPair(a,b)) { cancelPreparation(a,b); return; }
-        CompletableFuture<Boolean> fa = a.teleportAsync(first, PlayerTeleportEvent.TeleportCause.PLUGIN);
-        CompletableFuture<Boolean> fb = b.teleportAsync(second, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        CompletableFuture<Boolean> fa = a.teleportAsync(first, PlayerTeleportEvent.TeleportCause.COMMAND);
+        CompletableFuture<Boolean> fb = b.teleportAsync(second, PlayerTeleportEvent.TeleportCause.COMMAND);
         CompletableFuture.allOf(fa,fb).whenComplete((ignored,error) -> {
             if (stopping) return;
             Bukkit.getScheduler().runTask(core(),() -> {
@@ -232,12 +232,6 @@ public final class MineNightRTPQueue extends de.minenight.allinone.MineNightModu
         loser.removeScoreboardTag(DUEL_TAG);
         Player winner = Bukkit.getPlayer(winnerId);
         if (winner != null) winner.removeScoreboardTag(DUEL_TAG);
-        if (getConfig().getBoolean("settings.auto-respawn-loser",true)) {
-            respawning.add(loserId);
-            Bukkit.getScheduler().runTaskLater(core(), () -> {
-                if (loser.isOnline() && loser.isDead() && respawning.remove(loserId)) loser.spigot().respawn();
-            }, 3L);
-        }
     }
     @EventHandler public void onQuit(PlayerQuitEvent event) {
         Player leaver = event.getPlayer(); UUID id=leaver.getUniqueId();
@@ -261,7 +255,7 @@ public final class MineNightRTPQueue extends de.minenight.allinone.MineNightModu
         }
     }
     private void say(CommandSender sender,String key,String... substitutions) {
-        String value=getConfig().getString("messages.prefix","")+getConfig().getString("messages."+key,"<red>"+key);
+        String value=getConfig().getString("messages.prefix","")+getConfig().getString("messages."+key,"<#6685E8>"+key);
         for (int i=0;i+1<substitutions.length;i+=2) value=value.replace(substitutions[i],substitutions[i+1]);
         sender.sendMessage(mini.deserialize(value));
     }

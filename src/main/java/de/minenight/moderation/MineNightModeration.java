@@ -142,7 +142,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
     }
     private Component banMessage(Sanction sanction) {
         String discord = getConfig().getString("appeal.discord-url", "https://discord.com/");
-        Component message = mm.deserialize("<red><bold>You have been banned!</bold></red><newline><gray>Reason: <white>" + escape(sanction.reason) + "<newline><gray>Remaining: <white>" + remaining(sanction) + "<newline><newline><gray>If you want to appeal this ban, create a ticket in our Discord server.<newline>");
+        Component message = mm.deserialize("<#6685E8><bold>You have been banned!</bold></#6685E8><newline><#B7C7E8>Reason: <white>" + escape(sanction.reason) + "<newline><#B7C7E8>Remaining: <white>" + remaining(sanction) + "<newline><newline><#B7C7E8>If you want to appeal this ban, create a ticket in our Discord server.<newline>");
         return message.append(Component.text(discord, NamedTextColor.AQUA).clickEvent(ClickEvent.openUrl(discord)));
     }
     private String escape(String input) { return input.replace("<", "\\<").replace(">", "\\>"); }
@@ -230,7 +230,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
         sender.sendMessage("§eA shared IP alone does not confirm the same person.");
     }
 
-    private static final String PREFIX_LOOKUP = "§8[§dMineNight§8] §7";
+    private static final String PREFIX_LOOKUP = "§8[§9MineNight§8] §7";
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
@@ -296,8 +296,8 @@ public final class MineNightModeration extends MineNightModule implements Listen
         if (!manual && !expired) return;
         Bukkit.getScheduler().runTaskLater(core(), () -> {
             if (!player.isOnline()) return;
-            String title = manual ? "<gradient:#8175AE:#D5DCE8><bold>You have been unbanned!</bold></gradient>" : "<gradient:#8175AE:#D5DCE8><bold>Your ban has expired!</bold></gradient>";
-            String subtitle = manual ? "<gray>Welcome back to MineNight" : "<gray>You can play again";
+            String title = manual ? "<gradient:#4B63C4:#91B2FF><bold>You have been unbanned!</bold></gradient>" : "<gradient:#4B63C4:#91B2FF><bold>Your ban has expired!</bold></gradient>";
+            String subtitle = manual ? "<#B7C7E8>Welcome back to MineNight" : "<#B7C7E8>You can play again";
             player.showTitle(net.kyori.adventure.title.Title.title(mm.deserialize(title), mm.deserialize(subtitle), net.kyori.adventure.title.Title.Times.times(Duration.ofMillis(400), Duration.ofSeconds(4), Duration.ofMillis(700))));
             player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         }, 20L);
@@ -308,7 +308,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
         Sanction mute = mutes.get(event.getPlayer().getUniqueId());
         if (mute == null || !mute.active()) return;
         event.setCancelled(true);
-        Bukkit.getScheduler().runTask(core(), () -> event.getPlayer().sendMessage(mm.deserialize("<red>You are muted. <gray>Reason: <white>" + escape(mute.reason) + " <gray>| Remaining: <white>" + remaining(mute))));
+        Bukkit.getScheduler().runTask(core(), () -> event.getPlayer().sendMessage(mm.deserialize("<#6685E8>You are muted. <#B7C7E8>Reason: <white>" + escape(mute.reason) + " <#B7C7E8>| Remaining: <white>" + remaining(mute))));
     }
     @EventHandler public void onCommands(PlayerCommandSendEvent event) {
         if (event.getPlayer().hasPermission("minenight.moderation.staff")) return;
@@ -372,7 +372,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
             save();
             Player target = Bukkit.getPlayer(id);
             if (cmd.equals("ban") && target != null) target.kick(banMessage(bans.get(id)));
-            if (cmd.equals("mute") && target != null) target.sendMessage(mm.deserialize("<red>You have been muted: <white>" + escape(configReason)));
+            if (cmd.equals("mute") && target != null) target.sendMessage(mm.deserialize("<#6685E8>You have been muted: <white>" + escape(configReason)));
             sender.sendMessage((cmd.equals("ban") ? "Banned " : "Muted ") + targetName + " for " + configReason + " (" + time + ").");
             return true;
         }

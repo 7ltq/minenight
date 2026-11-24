@@ -1,0 +1,10 @@
+MineNightAllInOne – conservative performance update (Paper 1.21.11)
+
+- Vanilla nametag scoreboard: group data resolved once per player for each refresh, instead of separately for each viewer scoreboard. Existing team color handling is preserved unchanged.
+- TAB: header/footer and player-list name packets sent only when rendered components differ; cache cleared on quit, reload and disable. Dynamic placeholders still evaluated on every update.
+- Item despawn: spawn location resolved once per sweep rather than for each item; the 2s/10s rules and scheduling are unchanged.
+- RTP/RTpq: NO changes, to avoid disrupting teleport behavior.
+- Crystal/anchor combat and explosions: NO changes, to avoid interference with FasterCrystals.
+- Death kit, compact loot, TPA, moderation and GUI: NO changes.
+
+This is source-only. Needs compilation and an in-game test before production deployment. Back up existing plugin JAR and configuration before updating.

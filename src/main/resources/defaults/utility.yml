@@ -1,6 +1,6 @@
 announcement:
-  title: '<gradient:#8175AE:#D5DCE8><bold>Announcement</bold></gradient>'
-  subtitle-format: '<white>{message}'
+  title: '<gradient:#4B63C4:#91B2FF><bold>Announcement</bold></gradient>'
+  subtitle-format: '<#B7C7E8>{message}'
   duration-seconds: 5
   sound: true
 command-suggestions:

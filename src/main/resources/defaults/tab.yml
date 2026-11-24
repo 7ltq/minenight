@@ -10,24 +10,21 @@ settings:
 
 tab:
   header:
-    - '<gray>━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    - '<bold><gradient:#7B6CA5:#BBC8D9>MINENIGHT</gradient></bold>'
-    - '<gray>Crystal PvP <dark_gray>• <white>Practice'
+    - '<bold><gradient:#4B63C4:#91B2FF>MINENIGHT</gradient></bold>'
+    - '<#B7C7E8>Crystal PvP <#8298C4>• <white>Practice'
     - ''
-    - '<gray>Online: <white>{online}<dark_gray>/<white>{max} <dark_gray>• <gray>Ping: <white>{ping}ms'
+    - '<#B7C7E8>Players: <white>{online}<#8298C4>/<white>{max} <#8298C4>• <#B7C7E8>Ping: <white>{ping}ms'
   footer:
     - ''
-    - '<gray>TPS: <white>{tps} <dark_gray>• <gray>Players: <white>{online}'
-    - '<gray>Welcome to <bold><gradient:#8E82B1:#D1D7E2>MineNight</gradient></bold>'
-    - '<gray>━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    - '<#B7C7E8>TPS: <white>{tps} <#8298C4>• <#B7C7E8>minenight.de'
   player-name: '{prefix}{player}{suffix}'
 
 motd:
   lines:
-    - '    <bold><gradient:#8175AE:#D5DCE8>MINENIGHT</gradient></bold> <dark_gray>• <gray>CRYSTAL PVP'
-    - '  <white>Practice <dark_gray>• <gray>Crystal PvP <dark_gray>[<white>{online}<dark_gray>/<white>{max}<dark_gray>]'
+    - '<bold><gradient:#4B63C4:#91B2FF>MINENIGHT</gradient></bold> <#8298C4>• <#B7C7E8>Crystal PvP'
+    - '<#B7C7E8>Practice <#8298C4>• <white>{online}/{max} players'
 
 actionbar:
   enabled: true
   interval-ticks: 40
-  text: "<gradient:#8175AE:#D5DCE8>minenight.de</gradient>"
+  text: "<gradient:#4B63C4:#91B2FF>minenight.de</gradient>"

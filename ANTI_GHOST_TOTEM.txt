@@ -1,0 +1,11 @@
+MineNight Anti-Ghost Totem Sync (Paper 1.21.11)
+
+New module: totemsync
+Config: plugins/MineNightAllInOne/totemsync/config.yml
+Default: enabled: true
+
+The module coalesces server-authoritative inventory resyncs on totem-related inventory clicks, drags, hotbar/offhand swaps and successful totem pops. It does not grant, replace, consume or move items and does not cancel damage, inventory clicks, or resurrection.
+
+This reduces persistent client/server inventory display desync after totem operations. No server-only plugin can guarantee that a client will never briefly display a ghost item when network packets are delayed. No false totem protection is granted.
+
+If another plugin alters these inventory actions, verify compatibility on a test server. Use enabled: false to disable.

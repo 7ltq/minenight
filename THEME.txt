@@ -1,0 +1,12 @@
+MineNight Skin Blue Theme
+
+Base: #344BA0
+Deep blue: #4B63C4
+Primary: #6685E8
+Highlight: #91B2FF
+Muted text: #B7C7E8
+Secondary text: #8298C4
+
+Updated source code and bundled default configuration messages, GUI text, announcement title/subtitle, moderation notices including unban, TAB, MOTD, chat separators, join/quit, RTP, RTPQ, TPA, spawn, settings, and permissions interface.
+
+Existing YAML configuration files on the Minecraft server are not automatically overwritten by these defaults. Back up and update your existing plugins/MineNightAllInOne/ module configs as needed. Custom group colors already saved in perms.yml are preserved.

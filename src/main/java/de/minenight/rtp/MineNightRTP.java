@@ -90,7 +90,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
         if (getConfig().getConfigurationSection("destinations.end") != null) return;
         getConfig().set("destinations.end.enabled", true);
         getConfig().set("destinations.end.world", "end_world");
-        getConfig().set("destinations.end.display-name", "<light_purple>The End");
+        getConfig().set("destinations.end.display-name", "<#91B2FF>The End");
         getConfig().set("destinations.end.plain-name", "The End");
         getConfig().set("destinations.end.icon", "END_STONE");
         getConfig().set("destinations.end.slot", 22);
@@ -174,7 +174,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
 
     private void openGui(Player player) {
         MenuHolder holder = new MenuHolder();
-        Inventory inventory = Bukkit.createInventory(holder, 27, format(getConfig().getString("gui.title", "<gradient:#8175AE:#D5DCE8>MineNight RTP</gradient>")));
+        Inventory inventory = Bukkit.createInventory(holder, 27, format(getConfig().getString("gui.title", "<gradient:#4B63C4:#91B2FF>MineNight RTP</gradient>")));
         holder.inventory = inventory;
         if (getConfig().getBoolean("gui.fill-empty-slots", true)) {
             ItemStack pane = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
@@ -249,6 +249,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
                 worldName = generatedName;
             }
         }
+        getLogger().info("RTP request: player=" + player.getName() + ", biome=" + biome + ", world=" + worldName + ", loaded=" + (world != null));
         if (world == null) {
             finish(player, "world-not-found", "{world}", worldName);
             return;
@@ -265,6 +266,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
     private void search(Player player, World world, String biome, int remaining) {
         if (!player.isOnline() || !inProgress.contains(player.getUniqueId())) return;
         if (remaining <= 0) {
+            getLogger().warning("RTP found no safe location: player=" + player.getName() + ", biome=" + biome + ", world=" + world.getName());
             finish(player, "no-safe-location");
             return;
         }
@@ -290,25 +292,43 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
                 .whenComplete((chunk, throwable) -> Bukkit.getScheduler().runTask(core(), () -> {
                     if (!player.isOnline() || !inProgress.contains(player.getUniqueId())) return;
                     if (throwable != null || chunk == null) {
+                        if (remaining == 1) {
+                            if (throwable != null) {
+                                getLogger().log(java.util.logging.Level.WARNING,
+                                        "RTP could not load its final candidate chunk: player=" + player.getName() + ", world=" + world.getName() + ", chunk=" + (x >> 4) + "," + (z >> 4), throwable);
+                            } else {
+                                getLogger().warning("RTP returned no chunk for its final candidate: player=" + player.getName() + ", world=" + world.getName() + ", chunk=" + (x >> 4) + "," + (z >> 4));
+                            }
+                        }
                         search(player, world, biome, remaining - 1);
                         return;
                     }
                     int y = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
                     Location location = new Location(world, x + 0.5, y + 1.0, z + 0.5, player.getLocation().getYaw(), player.getLocation().getPitch());
                     if (!isSafe(location)) {
+                        if (remaining == 1) {
+                            getLogger().warning("RTP final candidate was unsafe: player=" + player.getName() + ", biome=" + biome + ", location=" + location);
+                        }
                         search(player, world, biome, remaining - 1);
                         return;
                     }
-                    player.teleportAsync(location, PlayerTeleportEvent.TeleportCause.PLUGIN).whenComplete((success, error) -> Bukkit.getScheduler().runTask(core(), () -> {
+                    player.teleportAsync(location, PlayerTeleportEvent.TeleportCause.COMMAND).whenComplete((success, error) -> Bukkit.getScheduler().runTask(core(), () -> {
                         if (!player.isOnline() || !inProgress.remove(player.getUniqueId())) return;
                         if (error == null && Boolean.TRUE.equals(success)) {
+                            getLogger().info("RTP succeeded: player=" + player.getName() + ", biome=" + biome + ", location=" + location);
                             reply(player, "teleported", "{destination}", destination.getString("plain-name", biomeLabel(biome)));
                         } else {
+                            getLogger().warning("RTP teleport failed: player=" + player.getName()
+                                    + ", biome=" + biome
+                                    + ", location=" + location
+                                    + ", cause=COMMAND, error=" + (error == null ? "teleport rejected or cancelled" : error));
                             reply(player, "teleport-failed");
                         }
                     }));
                 }));
         } catch (Exception exception) {
+            getLogger().log(java.util.logging.Level.WARNING,
+                    "RTP search failed: player=" + player.getName() + ", biome=" + biome + ", world=" + world.getName(), exception);
             finish(player, "teleport-failed");
         }
     }
@@ -335,7 +355,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
     }
 
     private void reply(CommandSender sender, String key, String... replacements) {
-        String message = getConfig().getString("messages." + key, "<red>" + key);
+        String message = getConfig().getString("messages." + key, "<#6685E8>" + key);
         for (int i = 0; i + 1 < replacements.length; i += 2) message = message.replace(replacements[i], replacements[i + 1]);
         sender.sendMessage(format(message));
     }
