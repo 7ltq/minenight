@@ -34,6 +34,7 @@ public final class MineNightAllInOne extends JavaPlugin {
         register("kits", new KitModule());
         register("stafftools", new StaffToolsModule());
         register("restart", new RestartModule());
+        register("screenshare", new ScreenshareModule());
         if (getServer().getPluginManager().isPluginEnabled("WorldEdit") ||
                 getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit")) {
             try {
