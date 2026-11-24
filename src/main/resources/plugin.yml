@@ -17,9 +17,9 @@ commands:
   ip:
     description: Toggle the server address above your hotbar.
     usage: /ip <on|off>
-  restart:
+  mnrestart:
     description: Schedule or cancel a server restart.
-    usage: /restart in <amount> <seconds|minutes> | cancel | now
+    usage: /mnrestart in <amount> <seconds|minutes> | cancel | now
     permission: minenight.restart
   vanish:
     description: Toggle staff invisibility to regular players.
