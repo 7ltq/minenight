@@ -14,6 +14,10 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
+  media:
+    description: Open the Media rank requirements menu.
+    usage: /media
+    permission: minenight.links.use
   screenshare:
     description: Start or release a staff review.
     usage: /screenshare <player|list> or /screenshare release <player>
