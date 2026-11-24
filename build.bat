@@ -69,12 +69,6 @@ if not exist "%MAVEN%" (
 )
 del /q "%MAVEN_ZIP%" >nul 2>nul
 :build
-where python >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] Python 3 is required for the embedded AntiCheat build.
-  pause
-  exit /b 1
-)
 call "%MAVEN%" -U clean package
 if errorlevel 1 (
   echo [ERROR] Build failed; check messages above.
