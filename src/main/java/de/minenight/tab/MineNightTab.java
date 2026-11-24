@@ -301,6 +301,7 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
             UUID id = player.getUniqueId();
             if (args.length == 0) {
                 player.sendMessage("IP display: " + (hiddenIp.contains(id) ? "OFF" : "ON"));
+                player.sendMessage(Component.text("Website: ").append(Component.text("https://minenight.de", TextColor.color(0x91B2FF)).clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl("https://minenight.de"))));
                 return true;
             }
             if (args.length != 1 || !(args[0].equalsIgnoreCase("on") || args[0].equalsIgnoreCase("off"))) {
