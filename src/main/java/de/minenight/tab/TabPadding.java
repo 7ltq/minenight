@@ -22,6 +22,7 @@ final class TabPadding {
     private Constructor<?> packetConstructor;
     private Constructor<?> removeConstructor;
     private Constructor<?> profileConstructor;
+    private Object grayProperties;
     private Method literal;
     private Object spectator;
     private Field entries;
@@ -39,7 +40,15 @@ final class TabPadding {
         Class<?> profile = Class.forName("com.mojang.authlib.GameProfile");
         Class<?> component = Class.forName("net.minecraft.network.chat.Component");
         Class<?> gameType = Class.forName("net.minecraft.world.level.GameType");
-        profileConstructor = profile.getConstructor(UUID.class, String.class);
+        Class<?> property = Class.forName("com.mojang.authlib.properties.Property");
+        Class<?> propertyMap = Class.forName("com.mojang.authlib.properties.PropertyMap");
+        Class<?> multimap = Class.forName("com.google.common.collect.Multimap");
+        Class<?> immutableMultimap = Class.forName("com.google.common.collect.ImmutableMultimap");
+        Object texture = property.getConstructor(String.class, String.class).newInstance("textures",
+                "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmExN2U5NzAzN2NlMzUzZjg1ZjVjNjVkZjQzNWQyOTQ0OWE4OGRhNDQ0MmU0MzYxY2Y5OWFiYmUxZjg5MmZiIn19fQ==");
+        Object properties = immutableMultimap.getMethod("of", Object.class, Object.class).invoke(null, "textures", texture);
+        grayProperties = propertyMap.getConstructor(multimap).newInstance(properties);
+        profileConstructor = profile.getConstructor(UUID.class, String.class, propertyMap);
         literal = component.getMethod("literal", String.class);
         spectator = gameType.getField("SPECTATOR").get(null);
         entryConstructor = entry.getDeclaredConstructors()[0];
@@ -67,7 +76,7 @@ final class TabPadding {
         List<Object> values = new ArrayList<>();
         for (int i = from; i < to; i++) {
             UUID id = ids.get(i);
-            Object profile = profileConstructor.newInstance(id, String.format(java.util.Locale.ROOT, "mn_blank_%02d", i));
+            Object profile = profileConstructor.newInstance(id, String.format(java.util.Locale.ROOT, "mn_blank_%02d", i), grayProperties);
             Object display = literal.invoke(null, "                        ");
             Class<?>[] types = entryConstructor.getParameterTypes();
             Object[] args = new Object[types.length];
