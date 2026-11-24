@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class GroupManager {
 
-    private static final String MEDIA_PREFIX = "<#6685E8>📹</#6685E8><#91B2FF>+</#91B2FF>";
+    private static final String MEDIA_PREFIX = "<#FF0099>📹</#FF0099><#55FFFF>+</#55FFFF>";
 
     
     public static final List<String> DEFAULT_PERMISSIONS = List.of(
@@ -69,9 +69,9 @@ public class GroupManager {
         boolean mediaChanged = false;
         if (media == null) {
             media = new Group("Media");
-            media.setRoleGradient("#6685E8");
+            media.setRoleGradient("#FF0099");
             media.setRoleBold(false);
-            media.setNameGradient("#6685E8");
+            media.setNameGradient("#FF0099");
             media.setNameBold(false);
             media.setPrefix(MEDIA_PREFIX);
             media.setPriority(25);
@@ -92,16 +92,12 @@ public class GroupManager {
                 media.setEmoji("");
                 mediaChanged = true;
             }
-            if (media.getRoleGradient() == null
-                    || media.getRoleGradient().isBlank()
-                    || media.getRoleGradient().equalsIgnoreCase("white")) {
-                media.setRoleGradient("#6685E8");
+            if (!"#FF0099".equalsIgnoreCase(media.getRoleGradient())) {
+                media.setRoleGradient("#FF0099");
                 mediaChanged = true;
             }
-            if (media.getNameGradient() == null
-                    || media.getNameGradient().isBlank()
-                    || media.getNameGradient().equalsIgnoreCase("white")) {
-                media.setNameGradient("#6685E8");
+            if (!"#FF0099".equalsIgnoreCase(media.getNameGradient())) {
+                media.setNameGradient("#FF0099");
                 mediaChanged = true;
             }
         }
