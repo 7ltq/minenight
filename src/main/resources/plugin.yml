@@ -14,6 +14,10 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
+  restart:
+    description: Schedule or cancel a server restart.
+    usage: /restart in <amount> <seconds|minutes> | cancel | now
+    permission: minenight.restart
   vanish:
     description: Toggle staff invisibility to regular players.
     usage: /vanish
@@ -215,6 +219,8 @@ commands:
     usage: /void [set|status|reload]
     permission: minenightvoid.teleport
 permissions:
+  minenight.restart:
+    default: op
   minenight.staff.vanish:
     default: op
   minenight.staff.seevanish:
