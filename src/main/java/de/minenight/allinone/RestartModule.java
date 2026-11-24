@@ -1,5 +1,6 @@
 package de.minenight.allinone;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import net.kyori.adventure.text.Component;
@@ -75,8 +76,16 @@ public final class RestartModule extends MineNightModule implements Listener {
         previous = left;
         bar.setTitle("Server restarting in " + time(left));
         bar.setProgress(Math.max(0.0, Math.min(1.0, (double) left / duration)));
-        if (left == 10 || left == 3) announce("Server Restart", "We'll be back shortly!");
+        if (left > 0 && left <= 10) {
+            for (Player player : Bukkit.getOnlinePlayers()) countdown(player, left);
+        }
         if (left == 0) restart();
+    }
+
+    private void countdown(Player player, int left) {
+        player.showTitle(Title.title(Component.text(Integer.toString(left), left <= 3 ? NamedTextColor.RED : NamedTextColor.AQUA),
+                Component.text("Server restarting — We'll be back shortly!", NamedTextColor.WHITE),
+                Title.Times.times(Duration.ZERO, Duration.ofMillis(1250), Duration.ZERO)));
     }
 
     private void restart() {
@@ -92,7 +101,9 @@ public final class RestartModule extends MineNightModule implements Listener {
     @EventHandler public void onJoin(PlayerJoinEvent event) {
         if (bar != null) {
             bar.addPlayer(event.getPlayer());
-            title(event.getPlayer(), "Server Restart", "We'll be back shortly!");
+            int left = (int) Math.max(0, Math.ceil((deadline - System.nanoTime()) / 1_000_000_000.0));
+            if (left > 0 && left <= 10) countdown(event.getPlayer(), left);
+            else title(event.getPlayer(), "Server Restart", "We'll be back shortly!");
         }
     }
 
