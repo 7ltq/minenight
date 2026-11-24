@@ -6,8 +6,6 @@ authors:
 - 7ltq x codex
 description: MineNight practice server core features in one plugin
 softdepend:
-- packetevents
-- GrimAC
 - Vault
 - LuckPerms
 - voicechat
@@ -16,13 +14,6 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
-  alerts:
-    description: Toggle MineNight AntiCheat alerts.
-    permission: minenight.anticheat.staff
-  sus:
-    description: Open a player AntiCheat profile.
-    usage: /sus <player>
-    permission: minenight.anticheat.staff
   media:
     description: Open the Media rank requirements menu.
     usage: /media
@@ -42,10 +33,6 @@ commands:
     description: Toggle staff invisibility to regular players.
     usage: /vanish
     permission: minenight.staff.vanish
-  totemcheck:
-    description: Measure the time until an offhand totem is re-equipped after a simulated pop.
-    usage: /totemcheck <player>
-    permission: minenight.staff.totemcheck
   mnschematic:
     description: Load, paste and protect schematic-based spawn regions.
     usage: /mnschematic load <name> | paste | <name> protect | staff mode | list
@@ -113,10 +100,6 @@ commands:
     description: Show player view distance optimization status or reload configuration.
     usage: /playeroptimizer [reload]
     permission: minenight.playeroptimizer.admin
-  totemmonitor:
-    description: MineNight AutoTotem pattern monitor (staff alerts only).
-    usage: /totemmonitor [reload]
-    permission: minenight.totemmonitor.admin
   back:
     description: Return to your last death location.
     usage: /back
@@ -239,18 +222,6 @@ commands:
     usage: /void [set|status|reload]
     permission: minenightvoid.teleport
 permissions:
-  minenight.anticheat.staff:
-    default: op
-    children:
-      totemguard.alerts: true
-      totemguard.check: true
-      totemguard.gui.profile: true
-      totemguard.gui.history: true
-      totemguard.gui.info: true
-      totemguard.teleport: true
-      minenight.staff.totemcheck: true
-  totemguard.bypass:
-    default: false
   minenight.screenshare:
     default: op
   minenight.restart:
@@ -258,8 +229,6 @@ permissions:
   minenight.staff.vanish:
     default: op
   minenight.staff.seevanish:
-    default: op
-  minenight.staff.totemcheck:
     default: op
   minenight.links.use:
     default: true
@@ -270,10 +239,6 @@ permissions:
   minenight.kits.staff:
     default: op
   minenight.playeroptimizer.admin:
-    default: op
-  minenight.totemmonitor.alerts:
-    default: op
-  minenight.totemmonitor.admin:
     default: op
   minenight.back:
     default: true
