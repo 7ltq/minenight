@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 public final class MineNightTab extends de.minenight.allinone.MineNightModule implements Listener {
-    private final TabPadding padding = new TabPadding();
     private final java.util.Set<UUID> hiddenIp = new java.util.HashSet<>();
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final Map<UUID, TabState> sentTab = new HashMap<>();
@@ -58,7 +57,6 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     public void onDisable() {
         if (task != null) task.cancel();
         if (actionbarTask != null) actionbarTask.cancel();
-        padding.close();
         sentTab.clear();
         sentNames.clear();
     }
@@ -75,7 +73,6 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
         task = Bukkit.getScheduler().runTaskTimer(core(), () -> {
             refreshMotd();
             boolean enabled = getConfig().getBoolean("settings.tab-enabled", true);
-            for (Player viewer : Bukkit.getOnlinePlayers()) padding.update(viewer, enabled && getConfig().getBoolean("settings.fixed-tab-size", true));
             if (!enabled) return;
             updateOrder();
             for (Player player : Bukkit.getOnlinePlayers()) updatePlayer(player);
@@ -270,7 +267,6 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
             if (event.getPlayer().isOnline() && getConfig().getBoolean("settings.tab-enabled", true)) {
                 updateOrder();
                 updatePlayer(event.getPlayer());
-                for (Player viewer : Bukkit.getOnlinePlayers()) padding.update(viewer, getConfig().getBoolean("settings.fixed-tab-size", true));
             }
         }, 5L);
     }
@@ -278,7 +274,6 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        padding.forget(event.getPlayer());
         sentTab.remove(id);
         sentNames.remove(id);
     }
