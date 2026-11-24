@@ -16,7 +16,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class RestartModule extends MineNightModule implements Listener {
@@ -29,21 +28,10 @@ public final class RestartModule extends MineNightModule implements Listener {
 
     @Override public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, core());
-        bindRestartCommand();
-    }
-
-    private void bindRestartCommand() {
-        var command = getCommand("minenightallinone:restart");
-        if (command == null) command = getCommand("restart");
-        if (command == null) return;
+        var command = getCommand("mnrestart");
+        if (command == null) throw new IllegalStateException("mnrestart is not registered");
         command.setExecutor(this);
         command.setTabCompleter(this);
-        Bukkit.getCommandMap().getKnownCommands().put("restart", command);
-    }
-
-    @EventHandler public void onServerLoad(ServerLoadEvent event) {
-        bindRestartCommand();
-        for (Player player : Bukkit.getOnlinePlayers()) player.updateCommands();
     }
 
     @Override public void onDisable() {
@@ -146,7 +134,7 @@ public final class RestartModule extends MineNightModule implements Listener {
             } catch (NumberFormatException ignored) {
             }
         }
-        sender.sendMessage("Usage: /restart in <amount> <seconds|minutes> | cancel | now");
+        sender.sendMessage("Usage: /mnrestart in <amount> <seconds|minutes> | cancel | now");
         return true;
     }
 
