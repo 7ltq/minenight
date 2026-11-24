@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.util.Vector;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -27,7 +28,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class ScreenshareModule extends MineNightModule implements Listener {
-    private record Session(String name, String staff) {}
+    private record Session(String name, String staff, float walkSpeed, float flySpeed) {}
     private final Map<UUID, Session> sessions = new HashMap<>();
     private BukkitTask reminders;
 
@@ -49,7 +50,7 @@ public final class ScreenshareModule extends MineNightModule implements Listener
         if (reminders != null) reminders.cancel();
         for (UUID id : sessions.keySet()) {
             Player player = Bukkit.getPlayer(id);
-            if (player != null) player.clearTitle();
+            if (player != null) restore(player, sessions.get(id));
         }
         sessions.clear();
     }
@@ -68,12 +69,18 @@ public final class ScreenshareModule extends MineNightModule implements Listener
     }
 
     private void release(UUID id) {
-        sessions.remove(id);
+        Session session = sessions.remove(id);
         Player player = Bukkit.getPlayer(id);
         if (player != null) {
-            player.clearTitle();
+            if (session != null) restore(player, session);
             player.sendMessage(Component.text("Your staff review has ended.", NamedTextColor.GREEN));
         }
+    }
+
+    private void restore(Player player, Session session) {
+        player.setWalkSpeed(session.walkSpeed());
+        player.setFlySpeed(session.flySpeed());
+        player.clearTitle();
     }
 
     private void alert(String message) {
@@ -101,7 +108,11 @@ public final class ScreenshareModule extends MineNightModule implements Listener
             if (target == null) { sender.sendMessage("Player is not online."); return true; }
             if (target.hasPermission("minenight.screenshare")) { sender.sendMessage("Staff members are exempt."); return true; }
             if (frozen(target)) { sender.sendMessage("Player is already frozen."); return true; }
-            sessions.put(target.getUniqueId(), new Session(target.getName(), sender.getName()));
+            sessions.put(target.getUniqueId(), new Session(target.getName(), sender.getName(), target.getWalkSpeed(), target.getFlySpeed()));
+            target.leaveVehicle();
+            target.setWalkSpeed(0f);
+            target.setFlySpeed(0f);
+            target.setVelocity(new Vector());
             target.closeInventory();
             notifyPlayer(target);
             alert(sender.getName() + " started a review for " + target.getName());
@@ -128,7 +139,9 @@ public final class ScreenshareModule extends MineNightModule implements Listener
     @EventHandler public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         Session session = sessions.remove(id);
-        if (session == null || !core().isEnabled() || Bukkit.getServer().isStopping()) return;
+        if (session == null) return;
+        restore(event.getPlayer(), session);
+        if (!core().isEnabled() || Bukkit.getServer().isStopping()) return;
         if (core().module("moderation") instanceof de.minenight.moderation.MineNightModeration moderation
                 && moderation.banScreenshareAvoid(id, session.name())) {
             alert(session.name() + " disconnected during a review and was banned for 7 days.");
@@ -141,12 +154,12 @@ public final class ScreenshareModule extends MineNightModule implements Listener
         var from = event.getFrom();
         var to = event.getTo();
         if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
-            var fixed = from.clone();
-            fixed.setYaw(to.getYaw());
-            fixed.setPitch(to.getPitch());
-            event.setTo(fixed);
+            event.setCancelled(true);
         }
     }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onVelocity(PlayerVelocityEvent event) { if (frozen(event.getPlayer())) event.setCancelled(true); }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) { if (frozen(event.getPlayer())) event.setCancelled(true); }
