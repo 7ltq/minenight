@@ -49,6 +49,7 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         getCommand("announcement").setExecutor(this);
         getCommand("discord").setExecutor(this);
         getCommand("website").setExecutor(this);
+        getCommand("media").setExecutor(this);
         getCommand("vote").setExecutor(this);
         Bukkit.getPluginManager().registerEvents(this, core());
     }
@@ -112,6 +113,11 @@ public final class MineNightUtility extends MineNightModule implements Listener 
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmd = command.getName().toLowerCase(java.util.Locale.ROOT);
+        if (cmd.equals("media")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("Player only."); return true; }
+            player.openInventory(new MediaMenu().getInventory());
+            return true;
+        }
         if (cmd.equals("vote")) {
             sender.sendMessage(mm.deserialize("<gradient:#4682B4:#91C8FF><bold>MineNight Votes</bold></gradient> <gray>» <white>Support our server:</white>"));
             String[][] sites = {
@@ -188,6 +194,57 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         }
         sender.sendMessage("Announcement sent to " + Bukkit.getOnlinePlayers().size() + " player(s).");
         return true;
+    }
+
+    private final class MediaMenu implements org.bukkit.inventory.InventoryHolder {
+        private final org.bukkit.inventory.Inventory inventory;
+
+        private MediaMenu() {
+            inventory = Bukkit.createInventory(this, 27, mm.deserialize("<gray>» <#FF0099>Media Rank</#FF0099> <gray>«"));
+            inventory.setItem(11, mediaItem(org.bukkit.Material.BOOK, "<#FF0099><bold>Media Requirements", java.util.List.of(
+                    "<gray>Requirements to become a <#FF0099>Media Rank:",
+                    "",
+                    "<white>YouTube: <yellow>2,500+ views",
+                    "<white>YouTube Shorts: <yellow>2,500+ views",
+                    "<white>TikTok: <yellow>2,500+ views",
+                    "<white>Instagram: <yellow>2,500+ views",
+                    "<white>Twitch: <yellow>2,500+ views",
+                    "",
+                    "<white>Show <#91B2FF>minenight.de <white>in your content.",
+                    "<gray>Apply by opening a Discord ticket.")));
+            inventory.setItem(13, mediaItem(org.bukkit.Material.PAPER, "<#91B2FF>MineNight Website", java.util.List.of(
+                    "<white>minenight.de", "<yellow>Click to receive the website link.")));
+            inventory.setItem(15, mediaItem(org.bukkit.Material.WRITABLE_BOOK, "<#FF0099>Apply for Media", java.util.List.of(
+                    "<gray>Open a ticket on Discord.", "<yellow>Click to receive the Discord link.")));
+        }
+
+        @Override public org.bukkit.inventory.Inventory getInventory() { return inventory; }
+    }
+
+    private org.bukkit.inventory.ItemStack mediaItem(org.bukkit.Material material, String name, java.util.List<String> lore) {
+        var item = new org.bukkit.inventory.ItemStack(material);
+        var meta = item.getItemMeta();
+        meta.displayName(mm.deserialize(name).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        meta.lore(lore.stream().map(line -> mm.deserialize(line).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    @EventHandler public void onMediaClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (!(event.getView().getTopInventory().getHolder() instanceof MediaMenu)) return;
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        int slot = event.getRawSlot();
+        if (slot != 13 && slot != 15) return;
+        Bukkit.getScheduler().runTask(core(), () -> {
+            if (!player.isOnline()) return;
+            player.closeInventory();
+            player.performCommand(slot == 13 ? "website" : "discord");
+        });
+    }
+
+    @EventHandler public void onMediaDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof MediaMenu) event.setCancelled(true);
     }
 
     @EventHandler public void onCommandSuggestions(PlayerCommandSendEvent event) {
