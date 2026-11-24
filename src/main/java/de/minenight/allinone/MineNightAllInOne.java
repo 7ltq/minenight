@@ -21,7 +21,6 @@ public final class MineNightAllInOne extends JavaPlugin {
         register("performance", new de.minenight.performance.MineNightPerformance());
         register("entitycleanup", new de.minenight.performance.MineNightEntityCleanup());
         register("playeroptimizer", new de.minenight.playeroptimizer.MineNightPlayerOptimizer());
-        register("totemmonitor", new de.minenight.totemmonitor.MineNightTotemMonitor());
         register("totemsync", new de.minenight.totemsync.MineNightTotemSync());
         register("settings", new de.minenight.settings.MineNightSettings());
         register("moderation", new de.minenight.moderation.MineNightModeration());
@@ -55,7 +54,6 @@ public final class MineNightAllInOne extends JavaPlugin {
                 entry.getValue().onEnable();
                 startedModules.add(entry.getKey());
                 if (entry.getKey().equals("playeroptimizer")) getCommand("playeroptimizer").setExecutor(entry.getValue());
-                if (entry.getKey().equals("totemmonitor")) getCommand("totemmonitor").setExecutor(entry.getValue());
                 if (entry.getKey().equals("tab")) getCommand("minenighttab").setExecutor(entry.getValue());
                 if (entry.getKey().equals("performance")) {
                     for (String command : java.util.List.of("mnperf", "nomobs", "noblockdrops", "no")) getCommand(command).setExecutor(entry.getValue());
@@ -65,6 +63,17 @@ public final class MineNightAllInOne extends JavaPlugin {
                 getLogger().severe("Failed to initialize module " + entry.getKey());
                 error.printStackTrace();
             }
+        }
+        AntiCheatModule anticheat = new AntiCheatModule();
+        register("anticheat", anticheat);
+        anticheat.onEnable();
+        startedModules.add("anticheat");
+        if (!anticheat.active()) {
+            var legacy = new de.minenight.totemmonitor.MineNightTotemMonitor();
+            register("totemmonitor", legacy);
+            legacy.onEnable();
+            startedModules.add("totemmonitor");
+            getCommand("totemmonitor").setExecutor(legacy);
         }
         MineNightVoteListener voting = new MineNightVoteListener(this);
         voting.register();
