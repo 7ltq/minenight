@@ -33,6 +33,7 @@ public final class MineNightAllInOne extends JavaPlugin {
         register("rtpqueue", new de.minenight.rtpqueue.MineNightRTPQueue());
         register("kits", new KitModule());
         register("stafftools", new StaffToolsModule());
+        register("restart", new RestartModule());
         if (getServer().getPluginManager().isPluginEnabled("WorldEdit") ||
                 getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit")) {
             try {
