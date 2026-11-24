@@ -82,7 +82,7 @@ def license_bytes():
         raise RuntimeError("GPL license text not found")
     return data
 
-def pack(own, engine):
+def pack(own, engine, output):
     with zipfile.ZipFile(own) as base, zipfile.ZipFile(engine) as dep:
         entries = {i.filename: base.read(i) for i in base.infolist() if not i.is_dir()}
         for info in dep.infolist():
@@ -115,7 +115,7 @@ def pack(own, engine):
         digest.update(struct.pack(">Q", len(data)))
         digest.update(data)
     entries[STAMP] = (digest.hexdigest() + "\n").encode()
-    temporary = own.with_suffix(".tmp")
+    temporary = output.with_suffix(".tmp")
     with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as out:
         for name, data in entries.items():
             out.writestr(name, data)
@@ -126,7 +126,7 @@ def pack(own, engine):
             raise RuntimeError("Missing Paper check engine")
         if out.read("plugin.yml").count(b"name: MineNightAllInOne") != 1:
             raise RuntimeError("Invalid plugin descriptor")
-    temporary.replace(own)
+    temporary.replace(output)
 
 def source_archive():
     target = ROOT / "target" / "TotemGuard-corresponding-source.zip"
@@ -140,7 +140,9 @@ def source_archive():
         z.write(Path(__file__), "minenight-build-integration.py")
 
 def main():
-    own = ROOT / "target" / "MineNightAllInOne.jar"
+    own = ROOT / "target" / "internal" / "MineNightAllInOne.jar"
+    output = ROOT / "target" / "MineNightAllInOne.jar"
+    output.unlink(missing_ok=True)
     if not own.is_file():
         raise RuntimeError("Build the MineNight Maven JAR first.")
     obtain_source()
@@ -155,7 +157,7 @@ def main():
     if len(jars) != 1:
         raise RuntimeError(f"Expected one upstream Paper JAR, got {jars}")
     source_archive()
-    pack(own, jars[0])
+    pack(own, jars[0], output)
     print("Combined MineNightAllInOne.jar created with pinned TotemGuard checks.")
 
 if __name__ == "__main__":

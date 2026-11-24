@@ -69,21 +69,20 @@ if not exist "%MAVEN%" (
 )
 del /q "%MAVEN_ZIP%" >nul 2>nul
 :build
-call "%MAVEN%" -U clean package
-if errorlevel 1 (
-  echo [ERROR] Build failed; check messages above.
-  pause
-  exit /b 1
-)
 where python >nul 2>nul
 if errorlevel 1 (
   echo [ERROR] Python 3 is required for the embedded AntiCheat build.
   pause
   exit /b 1
 )
-python tools\build_anticheat.py
+call "%MAVEN%" -U clean package
 if errorlevel 1 (
-  echo [ERROR] Embedded AntiCheat build failed. Do not deploy the plain Maven jar.
+  echo [ERROR] Build failed; check messages above.
+  pause
+  exit /b 1
+)
+if not exist "target\MineNightAllInOne.jar" (
+  echo [ERROR] Complete plugin JAR not found.
   pause
   exit /b 1
 )

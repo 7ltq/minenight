@@ -21,8 +21,12 @@ public final class AntiCheatModule extends MineNightModule {
             getLogger().warning("Standalone TotemGuard detected; embedded engine will not start.");
             return;
         }
+        if (core().getResource("com/deathmotion/totemguard/paper/TGPaperPlatform.class") == null) {
+            getLogger().severe("Incomplete MineNightAllInOne JAR: embedded AntiCheat classes missing. Deploy target/MineNightAllInOne.jar from a successful full build, not target/internal. Legacy monitor remains active.");
+            return;
+        }
         try {
-            Class<?> platform = Class.forName("com.deathmotion.totemguard.paper.TGPaperPlatform");
+            Class<?> platform = Class.forName("com.deathmotion.totemguard.paper.TGPaperPlatform", true, core().getClass().getClassLoader());
             engine = platform.getConstructor(JavaPlugin.class).newInstance(core());
             platform.getMethod("commonOnEnable").invoke(engine);
             active = (Boolean) platform.getMethod("isEnabled").invoke(engine);

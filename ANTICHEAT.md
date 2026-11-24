@@ -4,7 +4,7 @@ The embedded engine is built from TotemGuard at commit 48655b552acd33db01b0f6005
 
 ## Build
 
-Use JDK 25, Git, Maven and Python 3. Run build.bat on Windows or `mvn -B clean package && python3 tools/build_anticheat.py` on Linux. The plain Maven output does not contain the engine; only deploy a completed combined artifact. The CI workflow performs both steps.
+Use JDK 25, Git, Maven and Python 3. Run build.bat on Windows or `mvn -B clean package` on Linux. The Maven package phase now builds the engine automatically. Deploy only target/MineNightAllInOne.jar. The intermediate core JAR under target/internal is not deployable as the complete plugin. CI verifies that the final artifact contains the engine and integrity metadata.
 
 Install a compatible PacketEvents plugin (upstream compiles against 2.14.0-SNAPSHOT; minimum declared by the engine is 2.11.1). Do not install the standalone TotemGuard plugin alongside the embedded engine.
 
@@ -24,4 +24,4 @@ All check punishments start disabled for shadow testing on the practice server. 
 - Verify MineNight ban screen, seven-day expiry, unban and log history.
 - Confirm anti-cheat startup failure leaves other modules running; test shutdown and restart.
 
-This is a source integration preview, not a runtime-verified release.
+The original two-step CI build succeeded. The updated automatic Maven build and Paper runtime still require verification.

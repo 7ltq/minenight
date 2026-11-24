@@ -22,10 +22,14 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Build plugin
-        run: mvn -B -DskipTests package
-      - name: Build embedded AntiCheat engine
-        run: python3 tools/build_anticheat.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build complete plugin with embedded AntiCheat
+        run: mvn -B -DskipTests clean package
+      - name: Verify embedded engine
+        run: |
+          python -c "import zipfile; z=zipfile.ZipFile('target/MineNightAllInOne.jar'); assert 'com/deathmotion/totemguard/paper/TGPaperPlatform.class' in z.namelist(); assert 'META-INF/totemguard/integrity.sha256' in z.namelist(); assert z.testzip() is None"
       - name: Package source ZIP
         run: |
           zip -r MineNightAllInOne-source.zip . \
