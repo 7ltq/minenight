@@ -23,6 +23,8 @@ final class TabPadding {
     private Constructor<?> removeConstructor;
     private Constructor<?> profileConstructor;
     private Object grayProperties;
+    private volatile Object signedProperties;
+    private final java.util.Set<UUID> signedViewers = new java.util.HashSet<>();
     private Method literal;
     private Object spectator;
     private Field entries;
@@ -48,6 +50,7 @@ final class TabPadding {
                 "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmExN2U5NzAzN2NlMzUzZjg1ZjVjNjVkZjQzNWQyOTQ0OWE4OGRhNDQ0MmU0MzYxY2Y5OWFiYmUxZjg5MmZiIn19fQ==");
         Object properties = immutableMultimap.getMethod("of", Object.class, Object.class).invoke(null, "textures", texture);
         grayProperties = propertyMap.getConstructor(multimap).newInstance(properties);
+        loadSignedSkin(property, propertyMap, multimap, immutableMultimap);
         profileConstructor = profile.getConstructor(UUID.class, String.class, propertyMap);
         literal = component.getMethod("literal", String.class);
         spectator = gameType.getField("SPECTATOR").get(null);
@@ -67,6 +70,28 @@ final class TabPadding {
         removeConstructor = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket").getConstructor(List.class);
     }
 
+    private void loadSignedSkin(Class<?> property, Class<?> propertyMap, Class<?> multimap, Class<?> immutableMultimap) {
+        var client = java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(8)).build();
+        var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("https://api.mineskin.org/get/id/383747683"))
+                .timeout(java.time.Duration.ofSeconds(12)).header("User-Agent", "MineNightAllInOne/1.0").GET().build();
+        client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
+            try {
+                if (response.statusCode() != 200) throw new IllegalStateException("HTTP " + response.statusCode());
+                var texture = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject()
+                        .getAsJsonObject("data").getAsJsonObject("texture");
+                Object signed = property.getConstructor(String.class, String.class, String.class)
+                        .newInstance("textures", texture.get("value").getAsString(), texture.get("signature").getAsString());
+                Object properties = immutableMultimap.getMethod("of", Object.class, Object.class).invoke(null, "textures", signed);
+                signedProperties = propertyMap.getConstructor(multimap).newInstance(properties);
+            } catch (ReflectiveOperationException | RuntimeException error) {
+                Bukkit.getLogger().warning("MineNight signed tab skin unavailable: " + error);
+            }
+        }).exceptionally(error -> {
+            Bukkit.getLogger().warning("MineNight signed tab skin request failed: " + error);
+            return null;
+        });
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object additions(int from, int to) throws ReflectiveOperationException {
         EnumSet actions = EnumSet.noneOf((Class) actionType);
@@ -76,7 +101,7 @@ final class TabPadding {
         List<Object> values = new ArrayList<>();
         for (int i = from; i < to; i++) {
             UUID id = ids.get(i);
-            Object profile = profileConstructor.newInstance(id, String.format(java.util.Locale.ROOT, "mn_blank_%02d", i), grayProperties);
+            Object profile = profileConstructor.newInstance(id, String.format(java.util.Locale.ROOT, "mn_blank_%02d", i), signedProperties != null ? signedProperties : grayProperties);
             Object display = literal.invoke(null, "                        ");
             Class<?>[] types = entryConstructor.getParameterTypes();
             Object[] args = new Object[types.length];
@@ -89,7 +114,7 @@ final class TabPadding {
                 else if (type.isInstance(spectator)) args[j] = spectator;
                 else if (type.isInstance(display)) args[j] = display;
                 else if (type == boolean.class) args[j] = boolIndex++ == 0;
-                else if (type == int.class) args[j] = intIndex++ == 0 ? -1 : 0;
+                else if (type == int.class) args[j] = intIndex++ == 0 ? 1000 : 0;
                 else if (type.isPrimitive()) throw new IllegalStateException("Unsupported player info field " + type);
             }
             values.add(entryConstructor.newInstance(args));
@@ -123,13 +148,18 @@ final class TabPadding {
         int desired = enabled ? Math.max(0, 80 - visible) : 0;
         UUID id = viewer.getUniqueId();
         int current = counts.getOrDefault(id, 0);
-        if (current == desired) return;
+        boolean refreshSkin = signedProperties != null && !signedViewers.contains(id) && current > 0;
+        if (current == desired && !refreshSkin) return;
         try {
             initialize();
+            if (refreshSkin) {
+                send(viewer, removeConstructor.newInstance(List.copyOf(ids.subList(0, current))));
+                current = 0;
+            }
             if (desired > current) send(viewer, additions(current, desired));
             else send(viewer, removeConstructor.newInstance(List.copyOf(ids.subList(desired, current))));
-            if (desired == 0) counts.remove(id);
-            else counts.put(id, desired);
+            if (desired == 0) { counts.remove(id); signedViewers.remove(id); }
+            else { counts.put(id, desired); if (signedProperties != null) signedViewers.add(id); }
         } catch (ReflectiveOperationException | RuntimeException error) {
             failed = true;
             Bukkit.getLogger().warning("MineNight tab padding unavailable: " + error);
@@ -138,6 +168,7 @@ final class TabPadding {
 
     void forget(Player viewer) {
         counts.remove(viewer.getUniqueId());
+        signedViewers.remove(viewer.getUniqueId());
     }
 
     void close() {
@@ -153,5 +184,6 @@ final class TabPadding {
             }
         }
         counts.clear();
+        signedViewers.clear();
     }
 }
