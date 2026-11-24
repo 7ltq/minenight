@@ -5,6 +5,10 @@ ip-detection:
   auto-ban-matching-ips: true
   exempt-uuids: []
 reasons:
+  screenshare_avoid:
+    label: Screenshare Avoiding
+    ban-duration: 7d
+    mute-duration: 7d
   cheating:
     label: Cheating
     ban-duration: 7d
