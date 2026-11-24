@@ -104,6 +104,20 @@ public final class MineNightModeration extends MineNightModule implements Listen
     }
 
     @Override public void onDisable() { enabled = false; save(); }
+    public boolean banScreenshareAvoid(UUID id, String name) {
+        if (!enabled || currentBan(id) != null) return false;
+        names.put(id, name);
+        String reason = getConfig().getString("reasons.screenshare_avoid.label", "Screenshare Avoiding");
+        Sanction sanction = new Sanction(reason, System.currentTimeMillis() + Duration.ofDays(7).toMillis(), "Automatic Screenshare");
+        derivedBans.remove(id);
+        bans.put(id, sanction);
+        unbanNotices.remove(id);
+        expiredNotices.remove(id);
+        refreshDerivedFor(id, sanction);
+        save();
+        return true;
+    }
+
     public boolean isMuted(UUID id) {
         Sanction sanction = mutes.get(id);
         return enabled && sanction != null && sanction.active();
