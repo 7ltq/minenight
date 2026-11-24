@@ -22,14 +22,11 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Build complete plugin with embedded AntiCheat
+      - name: Build standalone core
         run: mvn -B -DskipTests clean package
-      - name: Verify embedded engine
+      - name: Verify no embedded anti-cheat
         run: |
-          python -c "import zipfile; z=zipfile.ZipFile('target/MineNightAllInOne.jar'); assert 'com/deathmotion/totemguard/paper/TGPaperPlatform.class' in z.namelist(); assert 'META-INF/totemguard/integrity.sha256' in z.namelist(); assert z.testzip() is None"
+          python3 -c "import zipfile; z=zipfile.ZipFile('target/MineNightAllInOne.jar'); assert not any(n.startswith(('com/deathmotion/totemguard/', 'ac/grim/grimac/', 'de/minenight/totemmonitor/')) or n.endswith('/AntiCheatModule.class') for n in z.namelist()); assert z.testzip() is None"
       - name: Package source ZIP
         run: |
           zip -r MineNightAllInOne-source.zip . \
@@ -41,6 +38,5 @@ jobs:
           path: |
             target/MineNightAllInOne.jar
             MineNightAllInOne-source.zip
-            target/TotemGuard-corresponding-source.zip
           if-no-files-found: error
           retention-days: 14
