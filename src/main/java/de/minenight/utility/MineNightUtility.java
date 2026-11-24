@@ -211,11 +211,11 @@ public final class MineNightUtility extends MineNightModule implements Listener 
                     "<white>Twitch: <yellow>2,500+ views",
                     "",
                     "<white>Show <#91B2FF>minenight.de <white>in your content.",
-                    "<gray>Apply by opening a Discord ticket.")));
+                    "<gray>Apply on minenight.de.")));
             inventory.setItem(13, mediaItem(org.bukkit.Material.PAPER, "<#91B2FF>MineNight Website", java.util.List.of(
                     "<white>minenight.de", "<yellow>Click to receive the website link.")));
             inventory.setItem(15, mediaItem(org.bukkit.Material.WRITABLE_BOOK, "<#FF0099>Apply for Media", java.util.List.of(
-                    "<gray>Open a ticket on Discord.", "<yellow>Click to receive the Discord link.")));
+                    "<gray>Apply on minenight.de.", "<yellow>Click to receive the website link.")));
         }
 
         @Override public org.bukkit.inventory.Inventory getInventory() { return inventory; }
@@ -239,7 +239,7 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         Bukkit.getScheduler().runTask(core(), () -> {
             if (!player.isOnline()) return;
             player.closeInventory();
-            player.performCommand(slot == 13 ? "website" : "discord");
+            player.performCommand("website");
         });
     }
 
