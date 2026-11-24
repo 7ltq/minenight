@@ -1,0 +1,37 @@
+name: Build MineNight AntiCheat
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/build_minenight_anticheat.py'
+      - '.github/workflows/anticheat.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/build_minenight_anticheat.py'
+      - '.github/workflows/anticheat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build standalone AntiCheat
+        run: python3 tools/build_minenight_anticheat.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MineNightAntiCheat
+          path: target/anticheat/*
+          if-no-files-found: error
