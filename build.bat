@@ -6,22 +6,22 @@ echo MineNight All-in-One - Build
 echo ===============================
 set "SELECTED_JDK="
 if defined JAVA_HOME if exist "%JAVA_HOME%\bin\javac.exe" (
-  "%JAVA_HOME%\bin\javac.exe" -version 2>&1 | findstr /r /c:"javac 2[1-9]" >nul && set "SELECTED_JDK=%JAVA_HOME%"
+  "%JAVA_HOME%\bin\javac.exe" -version 2>&1 | findstr /r /c:"javac 2[5-9]" >nul && set "SELECTED_JDK=%JAVA_HOME%"
 )
 if not defined SELECTED_JDK (
-  for /d %%D in ("C:\Program Files\Eclipse Adoptium\jdk-25*" "C:\Program Files\Eclipse Adoptium\jdk-21*" "C:\Program Files\Java\jdk-25*" "C:\Program Files\Java\jdk-21*") do (
+  for /d %%D in ("C:\Program Files\Eclipse Adoptium\jdk-25*" "C:\Program Files\Java\jdk-25*") do (
     if not defined SELECTED_JDK if exist "%%~fD\bin\javac.exe" set "SELECTED_JDK=%%~fD"
   )
 )
 if not defined SELECTED_JDK (
   for /f "delims=" %%P in ('where javac 2^>nul') do (
     if not defined SELECTED_JDK (
-      "%%P" -version 2>&1 | findstr /r /c:"javac 2[1-9]" >nul && for %%D in ("%%~dpP..") do set "SELECTED_JDK=%%~fD"
+      "%%P" -version 2>&1 | findstr /r /c:"javac 2[5-9]" >nul && for %%D in ("%%~dpP..") do set "SELECTED_JDK=%%~fD"
     )
   )
 )
 if not defined SELECTED_JDK (
-  echo [ERROR] JDK 21 or newer not found. Set JAVA_HOME to JDK 21 or 25.
+  echo [ERROR] JDK 25 or newer not found. Set JAVA_HOME to JDK 25.
   pause
   exit /b 1
 )
@@ -72,6 +72,18 @@ del /q "%MAVEN_ZIP%" >nul 2>nul
 call "%MAVEN%" -U clean package
 if errorlevel 1 (
   echo [ERROR] Build failed; check messages above.
+  pause
+  exit /b 1
+)
+where python >nul 2>nul
+if errorlevel 1 (
+  echo [ERROR] Python 3 is required for the embedded AntiCheat build.
+  pause
+  exit /b 1
+)
+python tools\build_anticheat.py
+if errorlevel 1 (
+  echo [ERROR] Embedded AntiCheat build failed. Do not deploy the plain Maven jar.
   pause
   exit /b 1
 )
