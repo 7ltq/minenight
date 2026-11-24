@@ -64,17 +64,6 @@ public final class MineNightAllInOne extends JavaPlugin {
                 error.printStackTrace();
             }
         }
-        AntiCheatModule anticheat = new AntiCheatModule();
-        register("anticheat", anticheat);
-        anticheat.onEnable();
-        startedModules.add("anticheat");
-        if (!anticheat.active()) {
-            var legacy = new de.minenight.totemmonitor.MineNightTotemMonitor();
-            register("totemmonitor", legacy);
-            legacy.onEnable();
-            startedModules.add("totemmonitor");
-            getCommand("totemmonitor").setExecutor(legacy);
-        }
         MineNightVoteListener voting = new MineNightVoteListener(this);
         voting.register();
         var voteTotalCommand = getCommand("votetotal");
