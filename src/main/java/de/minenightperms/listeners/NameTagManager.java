@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 public final class NameTagManager implements Listener {
     private static final MiniMessage MINI = MiniMessage.miniMessage();
     private static final Pattern HEX = Pattern.compile("#[0-9a-fA-F]{6}");
-    private static final Pattern OWN_TEAM = Pattern.compile("mn[0-9a-f]{13}");
+    private static final Pattern OWN_TEAM = Pattern.compile("mn(?:[0-9a-f]{13}|[0-9a-f]{14})");
     private final MineNightPerms plugin;
     private BukkitTask task;
 
@@ -59,8 +59,14 @@ public final class NameTagManager implements Listener {
         return result;
     }
 
-    private String teamName(UUID id) {
-        return "mn" + id.toString().replace("-", "").substring(0, 13);
+    private String teamName(UUID id, int position) {
+        return "mn" + String.format(java.util.Locale.ROOT, "%04x", Math.min(position, 65535))
+                + id.toString().replace("-", "").substring(0, 10);
+    }
+
+    private boolean hasRank(Player player) {
+        String key = plugin.getPlayerDataManager().getPlayerData(player.getUniqueId()).getGroupName();
+        return key != null && !key.equalsIgnoreCase("default") && plugin.getGroupManager().groupExists(key);
     }
 
     private void refresh() {
@@ -69,11 +75,25 @@ public final class NameTagManager implements Listener {
             Group group = plugin.getGroupManager().getGroup(plugin.getPlayerDataManager().getPlayerData(player.getUniqueId()).getGroupName());
             if (group != null) groups.put(player.getUniqueId(), group);
         }
+        var players = new java.util.ArrayList<Player>(Bukkit.getOnlinePlayers());
+        players.sort(java.util.Comparator.comparing(this::hasRank).reversed()
+                .thenComparing(java.util.Comparator.comparingInt((Player player) -> {
+                    Group group = groups.get(player.getUniqueId());
+                    return group == null ? 0 : group.getPriority();
+                }).reversed())
+                .thenComparing(Player::getName, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(Player::getUniqueId));
+        for (int i = 0; i < players.size(); i++) {
+            Player player = players.get(i);
+            int order = players.size() - i;
+            if (player.getPlayerListOrder() != order) player.setPlayerListOrder(order);
+        }
         for (Scoreboard board : boards()) {
-            for (Player player : Bukkit.getOnlinePlayers()) {
+            for (int i = 0; i < players.size(); i++) {
+                Player player = players.get(i);
                 Group group = groups.get(player.getUniqueId());
                 if (group == null) continue;
-                String name = teamName(player.getUniqueId());
+                String name = teamName(player.getUniqueId(), i);
                 Team team = board.getTeam(name);
                 if (team == null) team = board.registerNewTeam(name);
                 Team previous = board.getEntryTeam(player.getName());
@@ -94,6 +114,7 @@ public final class NameTagManager implements Listener {
                 for (String entry : new HashSet<>(team.getEntries())) {
                     if (Bukkit.getPlayerExact(entry) == null) team.removeEntry(entry);
                 }
+                if (team.getEntries().isEmpty()) team.unregister();
             }
         }
     }
