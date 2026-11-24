@@ -112,9 +112,18 @@ public final class MineNightTab extends de.minenight.allinone.MineNightModule im
         return 0;
     }
 
+    private boolean hasRank(Player player) {
+        if (core().module("perms") instanceof de.minenightperms.MineNightPerms perms) {
+            String key = perms.getPlayerDataManager().getPlayerData(player.getUniqueId()).getGroupName();
+            return key != null && !key.equalsIgnoreCase("default") && perms.getGroupManager().groupExists(key);
+        }
+        return false;
+    }
+
     private void updateOrder() {
         var players = new java.util.ArrayList<Player>(Bukkit.getOnlinePlayers());
-        players.sort(java.util.Comparator.comparingInt(this::priority).reversed()
+        players.sort(java.util.Comparator.comparing(this::hasRank).reversed()
+                .thenComparing(java.util.Comparator.comparingInt(this::priority).reversed())
                 .thenComparing(Player::getName, String.CASE_INSENSITIVE_ORDER));
         for (int i = 0; i < players.size(); i++) {
             Player player = players.get(i);
