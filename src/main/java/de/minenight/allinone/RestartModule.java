@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class RestartModule extends MineNightModule implements Listener {
@@ -28,9 +29,21 @@ public final class RestartModule extends MineNightModule implements Listener {
 
     @Override public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, core());
-        var command = getCommand("restart");
+        bindRestartCommand();
+    }
+
+    private void bindRestartCommand() {
+        var command = getCommand("minenightallinone:restart");
+        if (command == null) command = getCommand("restart");
+        if (command == null) return;
         command.setExecutor(this);
         command.setTabCompleter(this);
+        Bukkit.getCommandMap().getKnownCommands().put("restart", command);
+    }
+
+    @EventHandler public void onServerLoad(ServerLoadEvent event) {
+        bindRestartCommand();
+        for (Player player : Bukkit.getOnlinePlayers()) player.updateCommands();
     }
 
     @Override public void onDisable() {
@@ -141,8 +154,8 @@ public final class RestartModule extends MineNightModule implements Listener {
         if (!sender.hasPermission("minenight.restart")) return List.of();
         List<String> options = switch (args.length) {
             case 1 -> List.of("in", "cancel", "now");
-            case 2 -> args[0].equalsIgnoreCase("in") ? List.of("1", "5", "30", "60") : List.of();
-            case 3 -> args[0].equalsIgnoreCase("in") ? List.of("seconds", "minutes") : List.of();
+            case 2 -> args[0].equalsIgnoreCase("in") ? List.of("1", "2", "3", "5", "10", "15", "30", "60") : List.of();
+            case 3 -> args[0].equalsIgnoreCase("in") ? ("1".equals(args[1]) ? List.of("second", "minute") : List.of("seconds", "minutes")) : List.of();
             default -> List.of();
         };
         if (args.length == 0) return options;
