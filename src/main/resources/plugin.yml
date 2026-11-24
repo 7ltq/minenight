@@ -6,6 +6,8 @@ authors:
 - 7ltq x codex
 description: MineNight practice server core features in one plugin
 softdepend:
+- packetevents
+- GrimAC
 - Vault
 - LuckPerms
 - voicechat
@@ -14,6 +16,13 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
+  alerts:
+    description: Toggle MineNight AntiCheat alerts.
+    permission: minenight.anticheat.staff
+  sus:
+    description: Open a player AntiCheat profile.
+    usage: /sus <player>
+    permission: minenight.anticheat.staff
   media:
     description: Open the Media rank requirements menu.
     usage: /media
@@ -230,6 +239,18 @@ commands:
     usage: /void [set|status|reload]
     permission: minenightvoid.teleport
 permissions:
+  minenight.anticheat.staff:
+    default: op
+    children:
+      totemguard.alerts: true
+      totemguard.check: true
+      totemguard.gui.profile: true
+      totemguard.gui.history: true
+      totemguard.gui.info: true
+      totemguard.teleport: true
+      minenight.staff.totemcheck: true
+  totemguard.bypass:
+    default: false
   minenight.screenshare:
     default: op
   minenight.restart:
