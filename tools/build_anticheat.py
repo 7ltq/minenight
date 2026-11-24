@@ -49,7 +49,7 @@ def configure():
     patch(config, "debug-modifier-kick:\n  enabled: true", "debug-modifier-kick:\n  enabled: false")
     checks = common + "resources/checks.yml"
     patch(checks, '[BAN] ban %tg_player% Unfair Advantage', '[BAN] minenightallinone:ban %tg_player% cheating 7d')
-    edit(checks, lambda s: s.replace('[KICK] kick %tg_player% Packet Manipulation', '[KICK] minecraft:kick %tg_player% Packet Manipulation').replace('punishable: true', 'punishable: false'))
+    edit(checks, lambda s: s.replace('[KICK] kick %tg_player% Packet Manipulation', '[KICK] minecraft:kick %tg_player% Packet Manipulation'))
     mods = common + "resources/mods.yml"
     patch(mods, 'kick-command: "kick %tg_player% Unfair mods detected: %tg_mod_list%"', 'kick-command: "minecraft:kick %tg_player% Unfair mods detected: %tg_mod_list%"')
     patch(mods, 'ban-command: "ban %tg_player% Unfair mods detected: %tg_mod_list%"', 'ban-command: "minenightallinone:ban %tg_player% cheating 7d"')
