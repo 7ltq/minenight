@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public final class StaffToolsModule extends MineNightModule implements Listener {
     private static final String PREFIX = "§8[§9MineNight§8] §7";
+    private final Set<UUID> staffMode = new HashSet<>();
     private final Set<UUID> vanished = new HashSet<>();
     private final Map<UUID, FlightState> previousFlightStates = new HashMap<>();
 
@@ -35,6 +36,7 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
 
     @Override public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, core());
+        if (getCommand("staffmode") != null) getCommand("staffmode").setExecutor(this);
         if (getCommand("vanish") != null) getCommand("vanish").setExecutor(this);
     }
 
@@ -46,6 +48,7 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
                 restoreFlight(player);
             }
         }
+        staffMode.clear();
         vanished.clear();
         previousFlightStates.clear();
     }
@@ -56,6 +59,20 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
             return true;
         }
         switch (command.getName()) {
+            case "staffmode" -> {
+                if (!staff.hasPermission("minenight.staff.mode")) {
+                    staffMode.remove(staff.getUniqueId());
+                    staff.sendMessage(PREFIX + "No permission.");
+                    return true;
+                }
+                if (args.length != 0) {
+                    staff.sendMessage(PREFIX + "Usage: /staffmode");
+                    return true;
+                }
+                boolean enabled = staffMode.add(staff.getUniqueId());
+                if (!enabled) staffMode.remove(staff.getUniqueId());
+                staff.sendMessage(PREFIX + (enabled ? "Staff mode enabled." : "Staff mode disabled."));
+            }
             case "vanish" -> {
                 if (!staff.hasPermission("minenight.staff.vanish")) {
                     staff.sendMessage(PREFIX + "No permission.");
@@ -112,6 +129,10 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
         }
     }
 
+    public boolean isStaffMode(Player player) {
+        return player.hasPermission("minenight.staff.mode") && staffMode.contains(player.getUniqueId());
+    }
+
     public boolean isVanished(UUID playerId) {
         return vanished.contains(playerId);
     }
@@ -148,6 +169,7 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
+        staffMode.remove(id);
         if (vanished.remove(id)) {
             event.quitMessage(null);
             restoreFlight(event.getPlayer());

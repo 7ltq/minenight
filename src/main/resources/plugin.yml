@@ -14,6 +14,11 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
+  staffmode:
+    aliases: [sfmode]
+    description: Toggle staff alert mode.
+    usage: /staffmode
+    permission: minenight.staff.mode
   media:
     description: Open the Media rank requirements menu.
     usage: /media
@@ -222,6 +227,8 @@ commands:
     usage: /void [set|status|reload]
     permission: minenightvoid.teleport
 permissions:
+  minenight.staff.mode:
+    default: op
   minenight.screenshare:
     default: op
   minenight.restart:
