@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteRule ^(?:api|auth)(?:/.*)?$ support-api.php [L,QSA]
+<FilesMatch "^(?:\.env|.*\.sqlite3(?:-wal|-shm)?|.*\.zip)$">
+  Require all denied
+</FilesMatch>

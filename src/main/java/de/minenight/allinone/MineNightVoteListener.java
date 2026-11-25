@@ -49,8 +49,14 @@ final class MineNightVoteListener implements Listener, CommandExecutor {
                     if (vote == null) return;
                     Object name = vote.getClass().getMethod("getUsername").invoke(vote);
                     if (!(name instanceof String username) || !username.matches("[A-Za-z0-9_]{3,16}")) return;
-                    if (Bukkit.isPrimaryThread()) handleVote(username);
-                    else Bukkit.getScheduler().runTask(plugin, () -> handleVote(username));
+                    String service = String.valueOf(vote.getClass().getMethod("getServiceName").invoke(vote));
+                    String timestamp = String.valueOf(vote.getClass().getMethod("getTimeStamp").invoke(vote));
+                    Runnable confirmed = () -> {
+                        handleVote(username);
+                        if (plugin.module("perms") instanceof de.minenightperms.MineNightPerms perms && perms.getApplicationBridge() != null) perms.getApplicationBridge().confirmedVote(username, service, timestamp);
+                    };
+                    if (Bukkit.isPrimaryThread()) confirmed.run();
+                    else Bukkit.getScheduler().runTask(plugin, confirmed);
                 } catch (ReflectiveOperationException error) {
                     plugin.getLogger().warning("Vote processing failed: " + error.getClass().getSimpleName());
                 }

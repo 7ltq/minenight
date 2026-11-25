@@ -62,6 +62,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
 
     @Override public void onEnable() {
         saveDefaultConfig();
+        getConfig().options().copyDefaults(true);
         file = new File(getDataFolder(), "punishments.yml");
         YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
         String encoded = data.getString("security.salt", "");
@@ -114,6 +115,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
         unbanNotices.remove(id);
         expiredNotices.remove(id);
         refreshDerivedFor(id, sanction);
+        audit("ban", id, sanction.actor(), sanction.reason());
         save();
         return true;
     }
@@ -254,6 +256,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
             if (!rootOf(entry.getKey()).equals(main)) continue;
             derivedBans.remove(entry.getKey());
             bans.remove(entry.getKey());
+            audit("unban", entry.getKey(), "Automatic IP Detection", "Source ban removed: " + main);
         }
     }
 
@@ -261,6 +264,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
         for (Map.Entry<UUID, UUID> entry : new ArrayList<>(derivedBans.entrySet())) {
             if (!rootOf(entry.getKey()).equals(main)) continue;
             bans.put(entry.getKey(), new Sanction("Ban Evading", source.until(), "Automatic IP Detection"));
+            audit("ban_updated", entry.getKey(), source.actor(), "Linked source ban: " + source.reason());
         }
     }
 
@@ -324,6 +328,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
             return;
         }
         if (ban != null) {
+            audit("ban_expired", id, "Automatic expiration", ban.reason());
             bans.remove(id, ban);
             expiredNotices.add(id);
             unbanNotices.remove(id);
@@ -339,6 +344,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
                 Sanction source = currentBan(main);
                 if (source != null) {
                     Sanction inherited = new Sanction("Ban Evading", source.until(), "Automatic IP Detection");
+                    audit("ban", id, inherited.actor(), inherited.reason());
                     bans.put(id, inherited);
                     derivedBans.put(id, main);
                     unbanNotices.remove(id);
@@ -432,6 +438,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
                 derivedBans.remove(id);
                 refreshDerivedFor(id, bans.get(id));
             }
+            audit(cmd, id, sender.getName(), configReason + " (" + time + ")");
             save();
             Player target = Bukkit.getPlayer(id);
             if (cmd.equals("ban") && target != null) target.kick(banMessage(bans.get(id)));
@@ -447,17 +454,63 @@ public final class MineNightModeration extends MineNightModule implements Listen
             unbanNotices.add(id);
             expiredNotices.remove(id);
             save();
+            audit("unban", id, sender.getName(), String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
             sender.sendMessage("Unbanned " + targetName + ". Reason: " + String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
             return true;
         }
         if (cmd.equals("unmute")) {
             if (mutes.remove(id) == null) { sender.sendMessage("That player is not muted."); return true; }
+            audit("unmute", id, sender.getName(), args.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)) : "Staff review");
             save();
             sender.sendMessage("Unmuted " + targetName + ".");
             return true;
         }
         return true;
     }
+    public com.google.gson.JsonArray websiteBans() {
+        var result = new com.google.gson.JsonArray();
+        bans.forEach((id, ban) -> {
+            String name = names.get(id);
+            if (!ban.active() || name == null || !name.matches("[A-Za-z0-9_]{3,16}")) return;
+            var value = new com.google.gson.JsonObject();
+            value.addProperty("uuid", id.toString());
+            value.addProperty("name", name);
+            value.addProperty("fingerprint", banFingerprint(id, ban));
+            result.add(value);
+        });
+        return result;
+    }
+
+    private String banFingerprint(UUID id, Sanction ban) {
+        return de.minenightperms.manager.CommunityBridge.hash(id + "|" + ban.reason() + "|" + ban.until() + "|" + ban.actor());
+    }
+
+    public boolean websiteUnban(com.google.gson.JsonObject job) {
+        UUID id = UUID.fromString(job.get("uuid").getAsString());
+        Sanction ban = bans.get(id);
+        if (ban == null || !ban.active()) return true;
+        if (!banFingerprint(id, ban).equals(job.get("fingerprint").getAsString())) return false;
+        String name = names.get(id);
+        if (name == null || !name.matches("[A-Za-z0-9_]{3,16}")) return false;
+        String actor = "Website staff " + job.get("staff").getAsString();
+        CommandSender console = Bukkit.getConsoleSender();
+        CommandSender sender = (CommandSender) java.lang.reflect.Proxy.newProxyInstance(CommandSender.class.getClassLoader(), new Class<?>[]{CommandSender.class}, (proxy, method, args) -> method.getName().equals("getName") ? actor : method.invoke(console, args));
+        onCommand(sender, getCommand("unban"), "unban", new String[]{name, "appeal_accepted", job.get("reason").getAsString()});
+        return bans.get(id) == null;
+    }
+
+    private synchronized void audit(String action, UUID id, String actor, String reason) {
+        var record = new com.google.gson.JsonObject();
+        record.addProperty("date", Instant.now().toString());
+        record.addProperty("action", action);
+        record.addProperty("uuid", id.toString());
+        record.addProperty("staff", actor);
+        record.addProperty("reason", reason);
+        try {
+            java.nio.file.Files.writeString(new File(getDataFolder(), "moderation-audit.jsonl").toPath(), record + System.lineSeparator(), StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (IOException e) { throw new IllegalStateException("Moderation audit could not be persisted", e); }
+    }
+
     private void usage(CommandSender sender, String cmd) {
         sender.sendMessage(switch (cmd) {
             case "ban" -> "Usage: /ban <player> <reason_key> [duration]";
@@ -500,7 +553,7 @@ public final class MineNightModeration extends MineNightModule implements Listen
         if (args.length == 1) return names.values().stream().filter(s -> s.toLowerCase(Locale.ROOT).startsWith(args[0].toLowerCase(Locale.ROOT))).limit(25).toList();
         if (args.length == 2 && Set.of("ban", "mute").contains(command.getName())) return getConfig().getConfigurationSection("reasons").getKeys(false).stream().filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
         if (args.length == 3 && Set.of("ban", "mute").contains(command.getName())) return List.of("1s", "1m", "1h", "1d", "7d", "14d", "1mo", "1y");
-        if (args.length == 2 && command.getName().equals("unban")) return List.of("second_chance", "false_positive", "appeal_accepted");
+        if (args.length == 2 && command.getName().equals("unban")) return List.of("second_chance", "false_positive", "appeal_accepted", "insufficient_evidence", "account_recovered", "punishment_reduced", "staff_error");
         return List.of();
     }
 }

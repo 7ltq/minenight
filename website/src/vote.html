@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vote for MineNight · Support your server</title>
+  <meta name="description" content="Vote for MineNight on four Minecraft server lists. Help new players discover our Crystal PvP community.">
+  <meta name="theme-color" content="#202124">
+  <link rel="icon" href="assets/brand/favicon-upload.png" type="image/png">
+  <link rel="preload" href="assets/fonts/Manrope.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/fonts/SpaceGrotesk.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="community.css">
+  <script src="i18n.js" defer></script>
+  <script src="app.js" defer></script>
+<script src="votes.js" defer></script>
+</head>
+<body id="top" class="vote-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-title wrap">
+      <a class="left hover-bg community-link" href="https://discord.com/invite/mXjqNYF4b6" target="_blank" rel="noopener noreferrer">
+        <span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#discord"/></svg></span>
+        <span class="text"><span class="eyebrow">DISCORD</span><strong>MineNight</strong><span class="small muted">Join our community</span></span>
+      </a>
+      <a class="logo-link" href="index.html" aria-label="MineNight home"><img class="logo" src="assets/brand/minenight-upload.png" width="480" height="480" alt="MineNight official logo"></a>
+      <button class="right hover-bg server-button" type="button" data-copy-ip aria-label="Copy MineNight server IP minenight.de">
+        <span class="text"><span class="eyebrow">SERVER IP</span><strong>minenight.de</strong><span class="small muted" data-server-status>Click to copy the server IP</span></span>
+        <span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#copy"/></svg></span>
+      </button>
+      <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="navigation"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#menu"/></svg></button>
+    </div>
+    <div class="nav-shell"><nav class="navigation wrap" id="navigation" aria-label="Main navigation"><div class="nav-links"><a href="index.html">Home</a><a href="index.html#practice">Practice</a><a href="index.html#worlds">RTP Worlds</a><a href="vote.html" aria-current="page">Vote</a><a href="leaderboard.html">Leaderboard</a><a href="players.html">Players</a></div><div class="nav-actions"><a href="store.html"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#bag"/></svg>Store</a><a href="support.html"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#shield"/></svg>Support</a></div></nav></div>
+  </header>
+  <main id="main" class="site-content wrap" tabindex="-1">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">MineNight</a><span aria-hidden="true">/</span><span aria-current="page">Vote</span></nav>
+    <section class="vote-hero" aria-labelledby="vote-title"><img src="assets/art/vote.png" width="1400" height="1100" fetchpriority="high" alt="Crey6712 leaping with an emerald above gold blocks and a diamond trail"><div class="hero-copy"><p class="eyebrow ice-text">YOUR SERVER. YOUR SUPPORT.</p><h1 id="vote-title">A small vote.<br>A bigger community.</h1><p class="muted">Every vote helps new players find MineNight. Take a moment to put your server on the map.</p><div class="vote-summary"><span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#globe"/></svg>4 server lists</span><span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#person"/></svg>Your Minecraft username</span></div></div></section>
+    <section class="vote-list" aria-labelledby="vote-sites-title"><div class="vote-page-heading vote-list-heading"><h2 id="vote-sites-title">Vote sites</h2><p class="vote-provider-count">4 voting sites</p></div><div class="voting-grid">
+      <div class="vote-row"><a class="vote-site" href="https://minecraft.buzz/vote/minenight" target="_blank" rel="noopener noreferrer" aria-label="Vote for MineNight on Minecraft.buzz, opens in a new tab"><img class="site-logo" src="assets/vote/minecraft-buzz.png" width="32" height="32" alt=""><span class="site-number" aria-hidden="true">#1</span><h3>Minecraft.buzz</h3><span class="vote-action" aria-hidden="true">Vote</span></a></div>
+      <div class="vote-row"><a class="vote-site" href="https://minecraftservers.org/vote/696400" target="_blank" rel="noopener noreferrer" aria-label="Vote for MineNight on MinecraftServers, opens in a new tab"><img class="site-logo" src="assets/vote/minecraftservers.png" width="32" height="32" alt=""><span class="site-number" aria-hidden="true">#2</span><h3>Minecraft<wbr>Servers</h3><span class="vote-action" aria-hidden="true">Vote</span></a></div>
+      <div class="vote-row"><a class="vote-site" href="https://minecraft-mp.com/server/367126/vote/" target="_blank" rel="noopener noreferrer" aria-label="Vote for MineNight on Minecraft-MP, opens in a new tab"><img class="site-logo" src="assets/vote/minecraft-mp.png" width="32" height="32" alt=""><span class="site-number" aria-hidden="true">#3</span><h3>Minecraft-MP</h3><span class="vote-action" aria-hidden="true">Vote</span></a></div>
+      <div class="vote-row"><a class="vote-site" href="https://www.minecraftiplist.com/server/minenight-45795" target="_blank" rel="noopener noreferrer" aria-label="Vote for MineNight on MinecraftIPList, opens in a new tab"><img class="site-logo" src="assets/vote/minecraftiplist.ico" width="32" height="32" alt=""><span class="site-number" aria-hidden="true">#4</span><h3>Minecraft<wbr>IPList</h3><span class="vote-action" aria-hidden="true">Vote</span></a></div>
+    </div><p class="vote-link-note">Open a site to cast your vote. Voting is handled on the provider's website.</p></section>
+    <section class="latest-votes stats-panel" aria-labelledby="latest-votes-title"><h2 id="latest-votes-title">Latest Votes</h2><p id="votes-status" role="status">Loading confirmed votes…</p><ul id="latest-votes"></ul></section>
+    <section class="vote-help" aria-labelledby="help-title"><div><p class="eyebrow ice-text">GOOD TO KNOW</p><h2 id="help-title">A little help<br>before you vote.</h2><p>Voting is handled by each listing website. Use your exact Minecraft username and follow its instructions.</p></div><div class="vote-faq"><details><summary>How do I vote?</summary><p>Open a voting site above, enter your Minecraft Java username and complete that site's voting steps. Then come back here to visit the other lists.</p></details><details><summary>How often can I vote?</summary><p>Each server list sets its own voting interval. Check the message on that website to find out when you can vote again.</p></details><details><summary>Do I need a MineNight account?</summary><p>No website account is needed. Minecraft account features on MineNight are Coming Soon. A voting service may have its own sign-in requirements.</p></details><details><summary>A voting site won't open. What can I do?</summary><p>Some lists use a security check or may be temporarily unavailable. Try again later or contact the MineNight team on Discord. You can still use the other voting links.</p></details></div></section>
+    <section aria-label="Join MineNight"><button class="promo play" type="button" data-copy-ip aria-label="Play MineNight, copy server IP minenight.de"><span class="info card-copy"><span class="tag">READY WHEN YOU ARE</span><span class="card-title">Play MineNight</span><span class="card-description">Your next fight starts here. Join the server tonight.</span><span class="copy-pill">minenight.de <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#copy"/></svg><span class="small">Click to copy</span></span></span><span class="img-container"><span class="image"><img class="hero promo-art" src="assets/art/play.png" width="1400" height="1100" loading="lazy" alt="wraxps and 7ltq welcoming players to MineNight"></span></span>      </button></section>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-top"><a class="footer-brand" href="index.html"><img src="assets/brand/minenight-upload.png" width="44" height="44" alt=""><strong>MineNight<span class="small muted">Make every fight count.</span></strong></a><nav aria-label="Footer navigation"><a href="vote.html">Vote</a><a href="legal-notice.html">Legal Notice</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms of Service</a><a href="rules.html">Rules</a><a href="mailto:contact@minenight.de">Contact</a><a href="support.html">Support</a></nav></div><div class="wrap footer-bottom" id="legal"><span>© <span data-year>2026</span> MineNight. All rights reserved.</span><span>Not an official Minecraft service. Not approved by or associated with Mojang or Microsoft.</span></div></footer>
+  <dialog class="info-dialog" aria-labelledby="dialog-title"><button type="button" class="dialog-close icon-button" aria-label="Close dialog"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#close"/></svg></button><span class="dialog-symbol"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#bag"/></svg></span><p class="eyebrow ice-text" id="dialog-kicker">MINENIGHT</p><h2 id="dialog-title"></h2><div id="dialog-content"></div><button type="button" class="button dialog-done">Got it</button></dialog>
+  <div class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 name: MineNightAllInOne
-version: '1.8.12'
+version: '1.8.13'
 main: de.minenight.allinone.MineNightAllInOne
 api-version: '1.21.11'
 authors:

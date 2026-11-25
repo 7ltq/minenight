@@ -45,6 +45,34 @@ reasons:
     label: Inappropriate Behavior
     ban-duration: 3d
     mute-duration: 1d
+  account_compromised:
+    label: Compromised Account
+    ban-duration: 1d
+    mute-duration: 1d
+  duping:
+    label: Item Duplication
+    ban-duration: 14d
+    mute-duration: 1d
+  griefing:
+    label: Griefing
+    ban-duration: 7d
+    mute-duration: 1d
+  doxxing:
+    label: Sharing Private Information
+    ban-duration: 30d
+    mute-duration: 1d
+  threats:
+    label: Threats
+    ban-duration: 14d
+    mute-duration: 1d
+  chargeback:
+    label: Payment Chargeback
+    ban-duration: 30d
+    mute-duration: 1d
+  discrimination:
+    label: Discrimination
+    ban-duration: 7d
+    mute-duration: 1d
 
 anticheat:
   automatic-bans: false

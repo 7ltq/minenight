@@ -102,7 +102,7 @@ public final class NameTagManager implements Listener {
                 String role = group.getFormattedRole();
                 Component prefix = role.isBlank() ? Component.empty() : MINI.deserialize(role + "<reset> ");
                 if (!team.prefix().equals(prefix)) team.prefix(prefix);
-                NamedTextColor color = nameColor(group.getNameGradient(), group.getRoleGradient());
+                NamedTextColor color = nameColorForGroup(group, player.getName());
                 team.color(color);
                 if (team.getOption(Team.Option.NAME_TAG_VISIBILITY) != Team.OptionStatus.ALWAYS) {
                     team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
@@ -117,6 +117,22 @@ public final class NameTagManager implements Listener {
                 if (team.getEntries().isEmpty()) team.unregister();
             }
         }
+    }
+
+    NamedTextColor nameColorForGroup(Group group, String playerName) {
+        if (!group.getName().equalsIgnoreCase("media")) return nameColor(group.getNameGradient(), group.getRoleGradient());
+        TextColor color = firstNameColor(group.getFormattedNameComponent(playerName), TextColor.color(0xE52DBB));
+        return NamedTextColor.nearestTo(color == null ? TextColor.color(0xE52DBB) : color);
+    }
+
+    private TextColor firstNameColor(Component component, TextColor inherited) {
+        TextColor color = component.color() == null ? inherited : component.color();
+        if (component instanceof net.kyori.adventure.text.TextComponent text && !text.content().isEmpty()) return color;
+        for (Component child : component.children()) {
+            TextColor found = firstNameColor(child, color);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private NamedTextColor nameColor(String configured, String roleColor) {

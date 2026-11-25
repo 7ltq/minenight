@@ -23,7 +23,7 @@ jobs:
           java-version: '25'
           cache: maven
       - name: Build standalone core
-        run: mvn -B -DskipTests clean package
+        run: mvn -B clean verify
       - name: Verify no embedded anti-cheat
         run: |
           python3 -c "import zipfile; z=zipfile.ZipFile('target/MineNightAllInOne.jar'); assert not any(n.startswith(('com/deathmotion/totemguard/', 'ac/grim/grimac/', 'de/minenight/totemmonitor/')) or n.endswith('/AntiCheatModule.class') for n in z.namelist()); assert z.testzip() is None"
