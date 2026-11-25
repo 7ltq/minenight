@@ -16,6 +16,7 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
     private static MineNightPerms instance;
     private GroupManager      groupManager;
     private PlayerDataManager playerDataManager;
+    private de.minenightperms.manager.TebexRanks tebexRanks;
     private GuiListener       guiListener;
     private de.minenightperms.listeners.NameTagManager nameTagManager;
 
@@ -29,6 +30,7 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
         nameTagManager = new de.minenightperms.listeners.NameTagManager(this);
 
         groupManager.loadGroups();
+        tebexRanks = new de.minenightperms.manager.TebexRanks(this);
         playerDataManager.loadPlayers();
 
         MineNightPermsCommand cmd = new MineNightPermsCommand(this);
@@ -98,6 +100,7 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
 
     public static MineNightPerms   getInstance()          { return instance; }
     public GroupManager      getGroupManager()       { return groupManager; }
+    public de.minenightperms.manager.TebexRanks getTebexRanks() { return tebexRanks; }
     public PlayerDataManager getPlayerDataManager()  { return playerDataManager; }
     public GuiListener       getGuiListener()        { return guiListener; }
 }

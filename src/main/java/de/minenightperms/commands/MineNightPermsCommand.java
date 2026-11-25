@@ -32,6 +32,10 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
+        if (args.length > 0 && args[0].equalsIgnoreCase("tebex")) {
+            return plugin.getTebexRanks().command(sender, args);
+        }
+
         if (args.length == 0) {
             if (!(sender instanceof Player player)) { sendHelp(sender); return true; }
             if (!player.hasPermission("minenightperms.admin")) {

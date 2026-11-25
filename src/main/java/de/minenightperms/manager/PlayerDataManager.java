@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public class PlayerDataManager {
 
-    private final Map<UUID, PlayerData> players = new HashMap<>();
+    private final Map<UUID, PlayerData> players = new java.util.concurrent.ConcurrentHashMap<>();
     private final MineNightPerms plugin;
 
     public PlayerDataManager(MineNightPerms plugin) {
@@ -24,7 +24,7 @@ public class PlayerDataManager {
         for (String key : section.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(key);
-                PlayerData pd = new PlayerData(uuid);
+                PlayerData pd = new PlayerData(uuid, group -> plugin.getTebexRanks().effectiveGroup(uuid, group));
                 pd.setGroupName(plugin.getConfig().getString("players." + key + ".group", "default"));
                 players.put(uuid, pd);
             } catch (IllegalArgumentException ignored) {}
@@ -32,15 +32,14 @@ public class PlayerDataManager {
     }
 
     public void savePlayers() {
-        plugin.getConfig().set("players", null);
         for (Map.Entry<UUID, PlayerData> entry : players.entrySet()) {
-            plugin.getConfig().set("players." + entry.getKey() + ".group", entry.getValue().getGroupName());
+            plugin.getConfig().set("players." + entry.getKey() + ".group", entry.getValue().getAdministrativeGroupName());
         }
         plugin.saveConfig();
     }
 
     public PlayerData getPlayerData(UUID uuid) {
-        return players.computeIfAbsent(uuid, PlayerData::new);
+        return players.computeIfAbsent(uuid, id -> new PlayerData(id, group -> plugin.getTebexRanks().effectiveGroup(id, group)));
     }
 
     
