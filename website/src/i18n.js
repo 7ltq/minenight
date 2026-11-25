@@ -13,6 +13,10 @@
     return value;
   }
   const patterns=[
+    [/^Verified Minecraft account: (.*)$/,name=>'Verifiziertes Minecraft-Konto: '+name],
+    [/^(Player Report|Bug Report|General Support|Store \/ Rank Support|Media Application|Staff Application|Ban Appeal) · (.*)$/, (category,name)=>(dictionary[category]||category)+' · '+name],
+    [/^(.+) is required\.$/,label=>(dictionary[label]||label)+' ist erforderlich.'],
+    [/^(.+) must contain (\d+)–(\d+) characters\.$/,(label,min,max)=>(dictionary[label]||label)+' muss '+min+'–'+max+' Zeichen enthalten.'],
     [/^(\d+) players online · Click to copy$/,n=>n+' Spieler online · Zum Kopieren klicken'],
     [/^Role delivery: (.*)$/,state=>'Rangvergabe: '+state.replace('complete','abgeschlossen').replace('queued','ausstehend').replace('failed','fehlgeschlagen')],
     [/^(\d+) players$/,n=>n+' Spieler'],

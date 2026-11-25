@@ -279,7 +279,7 @@
       const error=node('p','form-error');error.setAttribute('role','alert');form.append(error);
       form.addEventListener('submit',async event=>{event.preventDefault();const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{await api('api/appeals/'+requested,json({action:event.submitter.value,reason:reason.value}));delete box.dataset.revision;await refreshTicket();}catch(e){error.textContent=e.message;}finally{buttons.forEach(b=>b.disabled=false);}});box.append(form);
     }
-    if(data.audit.length){const history=node('details'),title=node('summary','','Moderation history');history.append(title);for(const entry of data.audit)history.append(node('p','',`${entry.staff_name} · ${entry.action} · ${date(entry.created)} · ${entry.reason}`));box.append(history);}
+    if(data.audit.length){const history=node('details'),title=node('summary','','Moderation history');history.append(title);const labels={accept:'Ban appeal accepted',reject:'Ban appeal rejected',unban:'Unban requested',unban_complete:'Unban confirmed by the Minecraft server.',unban_failed:'Unban failed'};for(const entry of data.audit){const row=node('p'),staff=node('span','',entry.staff_name),reason=node('span','',entry.reason);staff.dataset.i18nSkip='';reason.dataset.i18nSkip='';row.append(staff,document.createTextNode(' · '),node('span','',labels[entry.action]||entry.action),document.createTextNode(' · '+date(entry.created)+' · '),reason);history.append(row);}box.append(history);}
   }
   async function applicationReview(ticket) {
     const panel = $('#application-review');
