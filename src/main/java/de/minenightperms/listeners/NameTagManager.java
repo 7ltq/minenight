@@ -100,7 +100,9 @@ public final class NameTagManager implements Listener {
                 if (previous != null && previous != team) previous.removeEntry(player.getName());
                 if (!team.hasEntry(player.getName())) team.addEntry(player.getName());
                 String role = group.getFormattedRole();
-                Component prefix = role.isBlank() ? Component.empty() : MINI.deserialize(role + "<reset> ");
+                Component prefix = group.getName().equalsIgnoreCase("media")
+                        ? Component.text("📹", TextColor.color(0xE52DBB)).append(Component.text("+", TextColor.color(0x00C8F0)))
+                        : role.isBlank() ? Component.empty() : MINI.deserialize(role + "<reset> ");
                 if (!team.prefix().equals(prefix)) team.prefix(prefix);
                 NamedTextColor color = nameColorForGroup(group, player.getName());
                 team.color(color);
