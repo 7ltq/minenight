@@ -118,6 +118,35 @@ public final class MineNightModeration extends MineNightModule implements Listen
         return true;
     }
 
+    private record FlagKey(UUID target, String engine, String check) {}
+    private record FlagWindow(long first, long last, int count) {}
+    private final Map<FlagKey, FlagWindow> flagWindows = new java.util.HashMap<>();
+
+    public void clearAntiCheatFlags(UUID id) {
+        flagWindows.keySet().removeIf(key -> key.target.equals(id));
+    }
+
+    public void evaluateFlag(UUID id, String engine, String check, int vl, boolean eligible) {
+        if (!eligible || !enabled || !getConfig().getBoolean("anticheat.automatic-bans", false)) return;
+        if (!getConfig().getStringList("anticheat.allowed-checks").contains(engine + ":" + check)) return;
+        if (Bukkit.getPlayer(id) == null || currentBan(id) != null) return;
+        int threshold = Math.max(3, Math.min(100, getConfig().getInt("anticheat.thresholds." + engine + "." + check, 10)));
+        if (vl < threshold) return;
+        long now = System.nanoTime();
+        long window = 120_000_000_000L;
+        if (flagWindows.size() >= 4096) {
+            flagWindows.entrySet().removeIf(entry -> now - entry.getValue().first >= window);
+            if (flagWindows.size() >= 4096) return;
+        }
+        FlagKey key = new FlagKey(id, engine, check);
+        FlagWindow previous = flagWindows.get(key);
+        if (previous == null || now - previous.first >= window) previous = new FlagWindow(now, now - 1_000_000_000L, 0);
+        if (now - previous.last < 1_000_000_000L) return;
+        FlagWindow next = new FlagWindow(previous.first, now, previous.count + 1);
+        flagWindows.put(key, next);
+        if (next.count >= threshold && banDetectedCheating(id, engine, check)) clearAntiCheatFlags(id);
+    }
+
     public boolean banDetectedCheating(UUID id, String engine, String check) {
         if (!enabled || !getConfig().getBoolean("anticheat.automatic-bans", false) || currentBan(id) != null) return false;
         if (!getConfig().getStringList("anticheat.allowed-checks").contains(engine + ":" + check)) return false;

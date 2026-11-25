@@ -49,3 +49,4 @@ reasons:
 anticheat:
   automatic-bans: false
   allowed-checks: []
+  thresholds: {}

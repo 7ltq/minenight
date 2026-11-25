@@ -21,7 +21,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 public final class StaffToolsModule extends MineNightModule implements Listener {
     private static final String PREFIX = "§8[§9MineNight§8] §7";
     private record AlertKey(String engine, UUID target, String check) {}
-    private record Alert(String engine, UUID target, String check, String message) {}
+    private record Alert(String engine, UUID target, String check, String message, int vl, boolean eligible) {}
     private record PendingAlert(String message, int count) {}
     private final java.util.concurrent.ArrayBlockingQueue<Alert> alerts = new java.util.concurrent.ArrayBlockingQueue<>(2048);
     private final Map<AlertKey, PendingAlert> pending = new HashMap<>();
@@ -141,14 +141,17 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
         }
     }
 
-    public void queueAlert(String engine, UUID target, String check, String message) {
+    public void queueAlert(String engine, UUID target, String check, String message, int vl, boolean eligible) {
         if (engine == null || target == null || check == null || message == null || message.length() > 16384) return;
-        alerts.offer(new Alert(engine, target, check, message));
+        alerts.offer(new Alert(engine, target, check, message, vl, eligible));
     }
 
     private void flushAlerts() {
         Alert alert;
-        while ((alert = alerts.poll()) != null) {
+        for (int drained = 0; drained < 2048 && (alert = alerts.poll()) != null; drained++) {
+            if (core().module("moderation") instanceof de.minenight.moderation.MineNightModeration moderation) {
+                moderation.evaluateFlag(alert.target, alert.engine, alert.check, alert.vl, alert.eligible);
+            }
             AlertKey key = new AlertKey(alert.engine, alert.target, alert.check);
             if (pending.size() >= 2048 && !pending.containsKey(key)) continue;
             PendingAlert old = pending.get(key);
@@ -225,6 +228,9 @@ public final class StaffToolsModule extends MineNightModule implements Listener 
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         staffMode.remove(id);
+        pending.keySet().removeIf(key -> key.target.equals(id));
+        lastSent.keySet().removeIf(key -> key.target.equals(id));
+        if (core().module("moderation") instanceof de.minenight.moderation.MineNightModeration moderation) moderation.clearAntiCheatFlags(id);
         if (vanished.remove(id)) {
             event.quitMessage(null);
             restoreFlight(event.getPlayer());

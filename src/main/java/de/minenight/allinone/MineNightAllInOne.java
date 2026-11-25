@@ -74,9 +74,9 @@ public final class MineNightAllInOne extends JavaPlugin {
             if (registered != null) registered.setTabCompleter(suggestions);
         }
     }
-    public void publishMineNightAlert(String engine, java.util.UUID target, String check, String message) {
+    public void publishMineNightAlert(String engine, java.util.UUID target, String check, String message, int vl, boolean eligible) {
         MineNightModule module = modules.get("stafftools");
-        if (module instanceof StaffToolsModule staff) staff.queueAlert(engine, target, check, message);
+        if (module instanceof StaffToolsModule staff) staff.queueAlert(engine, target, check, message, vl, eligible);
     }
 
     public void punishMineNightCheating(java.util.UUID target, String engine, String check) {
