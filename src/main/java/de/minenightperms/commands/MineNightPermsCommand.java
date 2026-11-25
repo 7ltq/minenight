@@ -32,6 +32,7 @@ public class MineNightPermsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
+        if (args.length > 0 && args[0].equalsIgnoreCase("link")) return plugin.getApplicationBridge().link(sender, args);
         if (args.length > 0 && args[0].equalsIgnoreCase("tebex")) {
             return plugin.getTebexRanks().command(sender, args);
         }

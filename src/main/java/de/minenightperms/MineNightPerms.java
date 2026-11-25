@@ -14,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class MineNightPerms extends de.minenight.allinone.MineNightModule {
 
     private static MineNightPerms instance;
+    private de.minenightperms.manager.ApplicationBridge applicationBridge;
     private GroupManager      groupManager;
     private PlayerDataManager playerDataManager;
     private de.minenightperms.manager.TebexRanks tebexRanks;
@@ -61,11 +62,14 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
         } else {
             getLogger().warning("Vault not found!");
         }
+        applicationBridge = new de.minenightperms.manager.ApplicationBridge(this);
+        applicationBridge.start();
         getLogger().info("MineNightPerms module enabled");
     }
 
     @Override
     public void onDisable() {
+        if (applicationBridge != null) applicationBridge.stop();
         if (nameTagManager != null) nameTagManager.stop();
         groupManager.saveGroups();
         playerDataManager.savePlayers();
@@ -98,6 +102,7 @@ public class MineNightPerms extends de.minenight.allinone.MineNightModule {
         if (nameTagManager != null) nameTagManager.setVisibleTo(viewer, playerId, visible);
     }
 
+    public de.minenightperms.manager.ApplicationBridge getApplicationBridge() { return applicationBridge; }
     public static MineNightPerms   getInstance()          { return instance; }
     public GroupManager      getGroupManager()       { return groupManager; }
     public de.minenightperms.manager.TebexRanks getTebexRanks() { return tebexRanks; }
