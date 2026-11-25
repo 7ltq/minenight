@@ -118,6 +118,26 @@ public final class MineNightModeration extends MineNightModule implements Listen
         return true;
     }
 
+    public boolean banDetectedCheating(UUID id, String engine, String check) {
+        if (!enabled || !getConfig().getBoolean("anticheat.automatic-bans", false) || currentBan(id) != null) return false;
+        if (!getConfig().getStringList("anticheat.allowed-checks").contains(engine + ":" + check)) return false;
+        Player target = Bukkit.getPlayer(id);
+        if (target == null || target.hasPermission("minenight.moderation.staff")) return false;
+        String reason = getConfig().getString("reasons.cheating.label", "Cheating");
+        String configuredTime = getConfig().getString("reasons.cheating.ban-duration", "7d");
+        DurationResult duration = parseTime(configuredTime);
+        if (duration == null) return false;
+        names.put(id, target.getName());
+        Sanction sanction = new Sanction(reason, System.currentTimeMillis() + duration.millis, "AntiCheat " + engine + ":" + check);
+        derivedBans.remove(id);
+        bans.put(id, sanction);
+        unbanNotices.remove(id);
+        expiredNotices.remove(id);
+        save();
+        target.kick(banMessage(sanction));
+        return true;
+    }
+
     public boolean isMuted(UUID id) {
         Sanction sanction = mutes.get(id);
         return enabled && sanction != null && sanction.active();

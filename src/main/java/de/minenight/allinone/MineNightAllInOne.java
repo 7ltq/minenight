@@ -74,6 +74,20 @@ public final class MineNightAllInOne extends JavaPlugin {
             if (registered != null) registered.setTabCompleter(suggestions);
         }
     }
+    public void publishMineNightAlert(String engine, java.util.UUID target, String check, String message) {
+        MineNightModule module = modules.get("stafftools");
+        if (module instanceof StaffToolsModule staff) staff.queueAlert(engine, target, check, message);
+    }
+
+    public void punishMineNightCheating(java.util.UUID target, String engine, String check) {
+        if (!org.bukkit.Bukkit.isPrimaryThread()) {
+            org.bukkit.Bukkit.getScheduler().runTask(this, () -> punishMineNightCheating(target, engine, check));
+            return;
+        }
+        MineNightModule module = modules.get("moderation");
+        if (module instanceof de.minenight.moderation.MineNightModeration moderation) moderation.banDetectedCheating(target, engine, check);
+    }
+
     private void register(String key, MineNightModule module) {
         module.bind(this, key);
         modules.put(key, module);

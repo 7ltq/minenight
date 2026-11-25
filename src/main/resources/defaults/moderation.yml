@@ -45,3 +45,7 @@ reasons:
     label: Inappropriate Behavior
     ban-duration: 3d
     mute-duration: 1d
+
+anticheat:
+  automatic-bans: false
+  allowed-checks: []
