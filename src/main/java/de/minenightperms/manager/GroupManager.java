@@ -12,9 +12,6 @@ import java.util.Map;
 
 public class GroupManager {
 
-    private static final String MEDIA_PREFIX = "<#FF0099>📹</#FF0099><#55FFFF>+</#55FFFF>";
-
-    
     public static final List<String> DEFAULT_PERMISSIONS = List.of(
         "minenight.kits.use",
         "minenightrtp.use",
@@ -63,45 +60,6 @@ public class GroupManager {
             }
         }
 
-        // Provision and migrate the built-in Media role. The role name remains "Media"
-        // in menus, while the in-world nametag uses only the camera + cyan plus symbols.
-        Group media = groups.get("media");
-        boolean mediaChanged = false;
-        if (media == null) {
-            media = new Group("Media");
-            media.setRoleGradient("#FF0099");
-            media.setRoleBold(false);
-            media.setNameGradient("#FF0099");
-            media.setNameBold(false);
-            media.setPrefix(MEDIA_PREFIX);
-            media.setPriority(25);
-            media.setPermissions(new ArrayList<>(DEFAULT_PERMISSIONS));
-            groups.put("media", media);
-            mediaChanged = true;
-        } else {
-            String oldPrefix = media.getPrefix();
-            // Use the exact video-camera emoji requested for the Media nametag.
-            // Camera and plus are one compact MiniMessage prefix, with explicit
-            // pink/cyan colors and no inserted gap between the two symbols.
-            // NameTagManager adds a single normal space before the player name.
-            if (!MEDIA_PREFIX.equals(oldPrefix)) {
-                media.setPrefix(MEDIA_PREFIX);
-                mediaChanged = true;
-            }
-            if (!media.getEmoji().isBlank()) {
-                media.setEmoji("");
-                mediaChanged = true;
-            }
-            if (!"#FF0099".equalsIgnoreCase(media.getRoleGradient())) {
-                media.setRoleGradient("#FF0099");
-                mediaChanged = true;
-            }
-            if (!"#FF0099".equalsIgnoreCase(media.getNameGradient())) {
-                media.setNameGradient("#FF0099");
-                mediaChanged = true;
-            }
-        }
-        if (mediaChanged) saveGroups();
     }
 
 
