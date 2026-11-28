@@ -34,6 +34,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private static final List<String> BIOMES = List.of("plain", "desert", "snow", "mushroom", "badlands");
     private static final List<Material> ICONS = List.of(Material.GRASS_BLOCK, Material.SAND, Material.SNOW_BLOCK, Material.MYCELIUM, Material.RED_SAND);
     private final Map<UUID, Invite> invites = new HashMap<>();
+    private final Set<UUID> kitEditing = new HashSet<>();
     private final Map<UUID, Match> roundDrops = new HashMap<>();
     private final NamespacedKey regearKey = new NamespacedKey("minenight","tier_regear");
     private final Map<UUID, Resume> suspendedMenus = new HashMap<>();
@@ -80,26 +81,10 @@ public final class TierTestModule extends MineNightModule implements Listener {
         UUID rerunBy;
         Location center;
         boolean deathScheduled, backedUp, resultShown;
-        final Map<UUID, Draft> drafts = new HashMap<>();
         Match(UUID a, UUID b) { this.a = a; this.b = b; }
         List<UUID> ids() { return List.of(a, b); }
         UUID other(UUID id) { return a.equals(id) ? b : a; }
         boolean playing() { return backedUp && stage != Stage.END && stage != Stage.SUSPENDED; }
-    }
-
-    private static final class Draft {
-        final int number;
-        final ItemStack[] storage, armor, ender;
-        ItemStack offhand;
-        Draft(int number, TierKitSnapshot snapshot) {
-            this.number=number; storage=snapshot.storage(); armor=snapshot.armor(); ender=snapshot.ender(); offhand=snapshot.offhand();
-        }
-        TierKitSnapshot snapshot(){return new TierKitSnapshot(storage,armor,offhand,ender);}
-        ItemStack get(int slot){return slot<36?storage[slot]:slot<40?armor[slot-36]:slot==40?offhand:ender[slot-41];}
-        void set(int slot,ItemStack item){
-            ItemStack copy=item==null?null:item.clone();
-            if(slot<36)storage[slot]=copy;else if(slot<40)armor[slot-36]=copy;else if(slot==40)offhand=copy;else ender[slot-41]=copy;
-        }
     }
 
     private static final class Menu implements InventoryHolder {
@@ -122,6 +107,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(plugin==null||!(plugin.module("tiertest") instanceof TierTestModule module))return false;
         Match match=module.matches.get(player.getUniqueId());
         return match!=null&&module.current(match)&&!match.backedUp&&match.stage==Stage.KIT;
+    }
+
+    public static boolean editingKit(Player player){
+        MineNightAllInOne plugin=MineNightAllInOne.instance();
+        return plugin!=null&&plugin.module("tiertest") instanceof TierTestModule module&&module.kitEditing.contains(player.getUniqueId())&&canEditKit(player);
     }
 
     public static boolean protectedInventory(Player player) {
@@ -339,7 +329,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
             return true;
         }
         if(args.length!=0) return false;
-        if(m!=null) { if(m.stage==Stage.SUSPENDED)say(p,"§eMatch paused. /tiertest resume "+name(m.other(id))+" to continue."); else if(!m.backedUp) resumeNow(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
+        if(m!=null) { if(editingKit(p)){endKitEdit(p);return true;} if(m.stage==Stage.SUSPENDED)say(p,"§eMatch paused. /tiertest resume "+name(m.other(id))+" to continue."); else if(!m.backedUp) resumeNow(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
         else if(available(p)) openOpponents(p,0);
         else say(p,"You are not available for a tier test.");
         return true;
@@ -430,7 +420,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void openBoth(Match m){
         for(UUID id:m.ids()){
             Player p=Bukkit.getPlayer(id);
-            if(p==null)continue;
+            if(p==null||kitEditing.contains(id))continue;
             Resume resume=suspendedMenus.get(id);
             if(resume!=null&&resume.match()==m)continue;
             openStage(p,m);
@@ -458,7 +448,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     private String status(Object value){return value==null?"§7Waiting...":"§a"+value;}
     private void openStage(Player p,Match m){
-        if(!current(m)||m.backedUp)return;
+        if(!current(m)||m.backedUp||kitEditing.contains(p.getUniqueId()))return;
         UUID id=p.getUniqueId(),other=m.other(id);
         Menu menu=menu(p,27,stepTitle(m.stage));menu.stage=m.stage;
         switch(m.stage){
@@ -491,11 +481,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
                 for(int n=1;n<=9;n++){
                     int number=n;var saved=kits.snapshotForTierTest(id,n);boolean chosen=("Kit "+n).equals(m.kitNames.get(id));
                     if(saved.isPresent())put(menu,n-1,selected(icon(Material.CHEST,"§bKit "+n,chosen?"§a✔ Selected":"§7Saved personal kit","Click to preview and validate"),chosen),()->preview(p,m,saved.get(),"Kit "+number));
-                    else put(menu,n-1,icon(Material.TRAPPED_CHEST,"§bCreate Kit "+n,"Click to create using the kitroom"),()->editKit(p,m,number));
+                    else put(menu,n-1,icon(Material.TRAPPED_CHEST,"§bCreate Kit "+n,"Click to create using the kitroom"),()->startKitEdit(p,m));
                 }
                 if(premades.contains(m.type.key()+".storage"))put(menu,13,selected(icon(configuredIcon("premade-icon",Material.ENDER_CHEST),"§b§l"+typeName(m.type)+" Premade","Official ready-to-use kit","Click to preview"),"Premade".equals(m.kitNames.get(id))),()->preview(p,m,readKit(premades,m.type.key()),"Premade"));
                 else menu.inventory.setItem(13,icon(Material.BARRIER,"§cPremade kit unavailable","Staff have not saved this kit yet."));
-                put(menu,10,icon(Material.CRAFTING_TABLE,"§b§lCreate / Edit Kit","Choose a personal kit slot","Build it using the shared kitroom"),()->chooseEditSlot(p,m));
+                put(menu,10,icon(Material.CRAFTING_TABLE,"§b§lCreate / Edit Kit","Choose a personal kit slot","Build it using the shared kitroom"),()->startKitEdit(p,m));
                 menu.inventory.setItem(16,icon(Material.PAPER,"§bKit Status","You: "+status(m.kitNames.get(id)),"Opponent: "+status(m.kits.containsKey(other)?"Ready":null),"Saved kits are never changed."));
             }
             case BIOME->{
@@ -538,7 +528,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         for(int i=0;i<4;i++)menu.inventory.setItem(36+i,armor[i]);
         menu.inventory.setItem(40,kit.offhand());footer(menu,45,53);
         put(menu,45,icon(Material.ARROW,"§bBack to kits"),()->openStage(p,m));
-        if(kitName.startsWith("Kit "))put(menu,53,icon(Material.CRAFTING_TABLE,"§bEdit this kit"),()->editKit(p,m,Integer.parseInt(kitName.substring(4))));
+        if(kitName.startsWith("Kit "))put(menu,53,icon(Material.CRAFTING_TABLE,"§bEdit this kit"),()->startKitEdit(p,m));
         put(menu,47,icon(Material.ENDER_CHEST,"§bEnder Chest","Preview the validated contents"),()->previewEnder(p,m,raw,kitName,kit));
         menu.inventory.setItem(51,icon(checked.changes().isEmpty()?Material.LIME_DYE:Material.PAPER,checked.changes().isEmpty()?"§a✔ Kit passed":"§eKit corrected",checked.changes().size()+" correction(s)","Original kit remains unchanged."));
         put(menu,49,icon(Material.EMERALD,"§a§lSELECT "+kitName.toUpperCase(Locale.ROOT),"Use this validated kit"),()->{
@@ -556,84 +546,34 @@ public final class TierTestModule extends MineNightModule implements Listener {
         footer(ender,27,35);
         put(ender,31,icon(Material.ARROW,"§bBack to kit preview"),()->preview(p,m,raw,kitName));display(p,ender);
     }
-    private void chooseEditSlot(Player p,Match m){
-        if(!canEditKit(p))return;
-        Menu menu=menu(p,27,"Create / Edit Kit");menu.stage=Stage.KIT;menu.resume=()->chooseEditSlot(p,m);footer(menu,18,26);
-        KitModule kits=(KitModule)core().module("kits");
-        for(int n=1;n<=9;n++){
-            int number=n;boolean exists=kits.snapshotForTierTest(p.getUniqueId(),n).isPresent();
-            put(menu,9+n-1,icon(exists?Material.CHEST:Material.TRAPPED_CHEST,"§bKit "+n,exists?"Edit existing kit":"Create new kit"),()->editKit(p,m,number));
-        }
-        put(menu,22,icon(Material.ARROW,"Back"),()->openStage(p,m));display(p,menu);
-    }
-    private void editKit(Player p,Match m,int number){
-        if(!canEditKit(p))return;
+    private void startKitEdit(Player p,Match m){
+        if(!canEditKit(p)||kitEditing.contains(p.getUniqueId()))return;
         UUID id=p.getUniqueId();
-        Draft draft=m.drafts.get(id);
-        if(draft==null||draft.number!=number){
-            KitModule kits=(KitModule)core().module("kits");
-            TierKitSnapshot initial=kits.snapshotForTierTest(id,number).orElseGet(()->new TierKitSnapshot(new ItemStack[36],new ItemStack[4],null,new ItemStack[27]));
-            draft=new Draft(number,initial);m.drafts.put(id,draft);
-        }
-        editor(p,m,draft,false);
+        try{
+            openingMenus.add(id);
+            p.closeInventory();
+            ItemStack cursor=p.getItemOnCursor();
+            if(cursor!=null&&!cursor.getType().isAir())throw new IllegalStateException("Put the cursor item away first.");
+            saveBackup(p);
+            kitEditing.add(id);
+            m.kits.remove(id);m.kitNames.remove(id);
+            suspendedMenus.remove(id);
+            ((KitModule)core().module("kits")).openTierKitMenu(p);
+            say(p,"Edit your kits normally. Use the back button or /tiertest to return.");
+        }catch(Exception error){
+            kitEditing.remove(id);
+            if(recovery.contains(id))recover(p);
+            say(p,"§cCould not open kit editor: "+error.getMessage());
+            getLogger().log(java.util.logging.Level.WARNING,"Tier kit editor failed",error);
+            openStage(p,m);
+        }finally{openingMenus.remove(id);}
     }
-    private boolean draftValid(Player p,Match m,Draft draft){return canEditKit(p)&&m.drafts.get(p.getUniqueId())==draft;}
-    private void editor(Player p,Match m,Draft draft,boolean ender){
-        if(!draftValid(p,m,draft))return;
-        Menu menu=menu(p,54,ender?"Edit Ender Chest":"Edit Kit "+draft.number);
-        menu.stage=Stage.KIT;menu.resume=()->editor(p,m,draft,ender);
-        int slots=ender?27:41;
-        for(int i=0;i<slots;i++){
-            int slot=ender?41+i:i;
-            ItemStack existing=draft.get(slot);
-            String label=slot<36?"Inventory "+(slot+1):slot<40?List.of("Boots","Leggings","Chestplate / Elytra","Helmet").get(slot-36):slot==40?"Offhand":"Ender Chest "+(slot-40);
-            ItemStack display=existing==null||existing.getType().isAir()?icon(Material.GRAY_STAINED_GLASS_PANE,"§7"+label,"Click to select an item from Kitroom"):existing.clone();
-            put(menu,i,display,()->kitroom(p,m,draft,slot,1,ender));
-        }
-        footer(menu,45,53);
-        put(menu,45,icon(Material.ARROW,"§bBack","Keep the unsaved draft"),()->chooseEditSlot(p,m));
-        put(menu,46,icon(Material.BUCKET,"§bUse current inventory","Replace the draft with a copy of your inventory"),()->{
-            TierKitSnapshot current=capture(p);Draft replacement=new Draft(draft.number,current);m.drafts.put(p.getUniqueId(),replacement);editor(p,m,replacement,ender);
-        });
-        if(m.type==TierKitRules.Type.ABOVE)put(menu,47,icon(Material.ENDER_CHEST,ender?"§bEdit main inventory":"§bEdit Ender Chest"),()->editor(p,m,draft,!ender));
-        put(menu,49,icon(Material.EMERALD,"§a§lSAVE & SELECT","Validate and save to personal Kit "+draft.number),()->saveDraft(p,m,draft));
-        menu.inventory.setItem(51,icon(Material.BOOK,"§bHow to edit","Click a slot, then choose an item from Kitroom.","Clear slots using the Kitroom barrier.","Items never enter your real inventory."));
-        put(menu,53,icon(Material.BARRIER,"§cDiscard draft"),()->{m.drafts.remove(p.getUniqueId());openStage(p,m);});
-        display(p,menu);
-    }
-    private boolean fitsSlot(ItemStack item,int slot){
-        if(slot<36||slot>=40)return true;
-        String type=item.getType().name();
-        return switch(slot){case 36->type.endsWith("_BOOTS");case 37->type.endsWith("_LEGGINGS");case 38->type.endsWith("_CHESTPLATE")||item.getType()==Material.ELYTRA;case 39->type.endsWith("_HELMET");default->false;};
-    }
-    private void kitroom(Player p,Match m,Draft draft,int slot,int page,boolean ender){
-        if(!draftValid(p,m,draft))return;
-        Menu menu=menu(p,54,"Kitroom · "+page+"/3");menu.stage=Stage.KIT;menu.resume=()->kitroom(p,m,draft,slot,page,ender);
-        KitModule kits=(KitModule)core().module("kits");
-        ItemStack[] items=kits.tierKitroomPage(page);
-        for(int i=0;i<items.length;i++){
-            ItemStack item=items[i];
-            if(item==null||item.getType().isAir()||!fitsSlot(item,slot))continue;
-            put(menu,i,item.clone(),()->{if(draftValid(p,m,draft)){draft.set(slot,item);editor(p,m,draft,ender);}});
-        }
-        footer(menu,45,53);
-        if(page>1)put(menu,45,icon(Material.ARROW,"Previous page"),()->kitroom(p,m,draft,slot,page-1,ender));
-        put(menu,47,icon(Material.ARROW,"Back to editor"),()->editor(p,m,draft,ender));
-        put(menu,49,icon(Material.BARRIER,"§cClear this slot"),()->{draft.set(slot,null);editor(p,m,draft,ender);});
-        menu.inventory.setItem(51,icon(Material.CHEST,"§bShared Kitroom","Choose an item for this slot","Templates are unchanged."));
-        if(page<3)put(menu,53,icon(Material.ARROW,"Next page"),()->kitroom(p,m,draft,slot,page+1,ender));
-        display(p,menu);
-    }
-    private void saveDraft(Player p,Match m,Draft draft){
-        if(!draftValid(p,m,draft))return;
-        TierKitRules.Result result=rules(m.type).sanitize(draft.snapshot());
-        try{((KitModule)core().module("kits")).saveTierKit(p,draft.number,result.kit());}
-        catch(Exception error){say(p,"§cCould not save kit. Your draft was kept.");getLogger().log(java.util.logging.Level.WARNING,"Tier kit save failed",error);return;}
-        m.drafts.remove(p.getUniqueId());
-        say(p,"§aKit "+draft.number+" saved.");report(p,result);
-        UUID id=p.getUniqueId();
-        m.kits.put(id,result.kit());m.kitNames.put(id,"Kit "+draft.number);
-        if(m.kits.size()==2){m.stage=Stage.BIOME;openBoth(m);}else updateChoices(p,m);
+    public void endKitEdit(Player p){
+        UUID id=p.getUniqueId();Match m=matches.get(id);
+        if(!kitEditing.remove(id))return;
+        p.closeInventory();
+        if(!recover(p)){if(m!=null)finish(m,null,"Kit editing recovery failed.");return;}
+        if(m!=null&&current(m)&&m.stage==Stage.KIT)openStage(p,m);
     }
     private void resumeNow(Player p,Match m){
         if(!current(m)||m.backedUp)return;
@@ -678,7 +618,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
             return;
         }
         Match m=matches.get(p.getUniqueId());
-        if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
+        if(m==null||!m.backedUp){if(editingKit(p)){if(!((KitModule)core().module("kits")).isTierEditorInventory(p,event.getView().getTopInventory()))event.setCancelled(true);return;}if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         Inventory top=event.getView().getTopInventory();
         
@@ -700,7 +640,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         Inventory top=event.getView().getTopInventory();
         if(top.getHolder() instanceof Menu){event.setCancelled(true);return;}
         Match m=matches.get(p.getUniqueId());
-        if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
+        if(m==null||!m.backedUp){if(editingKit(p)){if(!((KitModule)core().module("kits")).isTierEditorInventory(p,top))event.setCancelled(true);return;}if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         if(event.getRawSlots().stream().noneMatch(i->i<top.getSize()))return;
         if(regearItem(event.getOldCursor())){event.setCancelled(true);return;}
@@ -827,7 +767,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
 
     @EventHandler(priority=EventPriority.LOWEST) public void death(PlayerDeathEvent event){
         Player p=event.getEntity();Match m=matches.get(p.getUniqueId());
-        if(m==null||!m.backedUp)return;
+        if(m==null||(!m.backedUp&&!kitEditing.contains(p.getUniqueId())))return;
         event.setKeepInventory(true);event.getDrops().clear();event.setKeepLevel(true);event.setDroppedExp(0);
         if(m.stage==Stage.ACTIVE){
             m.dead.add(p.getUniqueId());
@@ -1035,7 +975,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         m.stage=Stage.END;++m.epoch;clearContainers(m);
         if(winner!=null&&!m.resultShown)announceResult(m,winner);
         for(UUID id:m.ids()){
-            matches.remove(id,m);suspendedMenus.remove(id);pendingReopen.remove(id);Player p=Bukkit.getPlayer(id);
+            matches.remove(id,m);kitEditing.remove(id);suspendedMenus.remove(id);pendingReopen.remove(id);Player p=Bukkit.getPlayer(id);
             if(p==null)continue;
             p.closeInventory();
             if(reason!=null)say(p,reason);
@@ -1074,14 +1014,16 @@ public final class TierTestModule extends MineNightModule implements Listener {
             if(m.stage!=Stage.SUSPENDED)finish(m,null,"Tier test stopped.");
         }
         for(Player p:Bukkit.getOnlinePlayers())if(recovery.contains(p.getUniqueId())&&!p.isDead())recover(p);
-        invites.clear();matches.clear();roundDrops.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
+        invites.clear();matches.clear();kitEditing.clear();roundDrops.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
     }
 
-    private boolean frozen(Player p){Match m=matches.get(p.getUniqueId());return (m!=null&&m.backedUp&&m.stage!=Stage.ACTIVE)||(m==null&&recovery.contains(p.getUniqueId()));}
+    private boolean frozen(Player p){Match m=matches.get(p.getUniqueId());return kitEditing.contains(p.getUniqueId())||(m!=null&&m.backedUp&&m.stage!=Stage.ACTIVE)||(m==null&&recovery.contains(p.getUniqueId()));}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void commandGuard(PlayerCommandPreprocessEvent event){
         if(!locked(event.getPlayer()))return;
         String command=event.getMessage().substring(1).split(" ",2)[0].toLowerCase(Locale.ROOT);int colon=command.indexOf(':');if(colon>=0)command=command.substring(colon+1);
         if(Set.of("tiertest","rerun","msg","tell","w","r","reply").contains(command))return;
+        if(editingKit(event.getPlayer())&&(Set.of("kit","kitroom","copy","copykit").contains(command)||command.matches("k[1-9]")))return;
+        if(isActive(event.getPlayer())&&Set.of("tpa","tpahere","tpaccept","tpadecline").contains(command))return;
         if(command.equals("regear")&&isActive(event.getPlayer()))return;
         event.setCancelled(true);say(event.getPlayer(),msg("blocked","Action unavailable during a tier test."));
     }
@@ -1124,8 +1066,24 @@ public final class TierTestModule extends MineNightModule implements Listener {
         Match a=source==null?null:matches.get(source.getUniqueId()),b=target==null?null:matches.get(target.getUniqueId());
         if(a!=null&&a.playing()&&(a.stage!=Stage.ACTIVE||(target!=null&&a!=b))){event.setCancelled(true);return;}
         if(b!=null&&b.playing()&&(b.stage!=Stage.ACTIVE||(source!=null&&a!=b)))event.setCancelled(true);
-        if(source!=null&&a==null&&area(event.getEntity().getLocation())!=null)event.setCancelled(true);
+        if(source!=null&&(kitEditing.contains(source.getUniqueId())||a==null&&area(event.getEntity().getLocation())!=null))event.setCancelled(true);
     }
+    public static boolean allowsTpa(Player first,Player second){
+        if(first==null||second==null||first.equals(second))return false;
+        if(!locked(first)&&!locked(second))return true;
+        MineNightAllInOne plugin=MineNightAllInOne.instance();
+        if(plugin==null||!(plugin.module("tiertest") instanceof TierTestModule module))return false;
+        Match m=module.matches.get(first.getUniqueId());
+        return m!=null&&m==module.matches.get(second.getUniqueId())&&module.isActive(first)&&module.isActive(second)&&module.inside(m,first.getLocation())&&module.inside(m,second.getLocation());
+    }
+    public boolean teleportOpponent(Player traveler,Player destination){
+        if(!allowsTpa(traveler,destination)||!isActive(traveler)||!isActive(destination))return false;
+        UUID id=traveler.getUniqueId();
+        internalTeleport.add(id);
+        try{return traveler.teleport(destination.getLocation().clone(),PlayerTeleportEvent.TeleportCause.COMMAND);}
+        finally{internalTeleport.remove(id);}
+    }
+
     public boolean isActive(Player player){
         Match m=matches.get(player.getUniqueId());
         return m!=null&&current(m)&&m.stage==Stage.ACTIVE&&!m.deathScheduled;
@@ -1138,14 +1096,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
         return regearItem(item)&&regearToken(m,id).equals(item.getItemMeta().getPersistentDataContainer().get(regearKey,org.bukkit.persistence.PersistentDataType.STRING));
     }
     public boolean regear(Player p){
-        Match m=matches.get(p.getUniqueId());UUID id=p.getUniqueId();
+        Match m=matches.get(p.getUniqueId());
         if(!isActive(p)){say(p,"§cRegear is available during an active round only.");return true;}
-        for(ItemStack item:p.getInventory().getContents())if(validRegearItem(item,m,id)){say(p,"You already have a regear shulker.");return true;}
-        if(m.regearBoxes.containsValue(id)){say(p,"You already placed a regear shulker.");return true;}
-        if(p.getInventory().firstEmpty()<0){say(p,"Free an inventory slot first.");return true;}
-        ItemStack item=icon(Material.PURPLE_SHULKER_BOX,"§bRegear Shulker","Single-use","Place after the normal combat delay","Restocks your validated tier test kit");
-        ItemMeta meta=item.getItemMeta();meta.getPersistentDataContainer().set(regearKey,org.bukkit.persistence.PersistentDataType.STRING,regearToken(m,id));item.setItemMeta(meta);
-        p.getInventory().addItem(item);say(p,"Regear shulker added.");return true;
+        if(!regearReady(p))return true;
+        refillValidated(p,m);
+        return true;
     }
     private boolean regearReady(Player p){
         long wait=((KitModule)core().module("kits")).regearWaitMillis(p);
@@ -1158,18 +1113,18 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof ShulkerBox box)
             for(ItemStack nested:box.getSnapshotInventory().getContents())collectExternal(nested,result);
     }
+    private void refillValidated(Player p,Match m){
+        List<ItemStack> external=new ArrayList<>();
+        for(var entry:m.containers.entrySet())if(entry.getValue().equals(p.getUniqueId())&&entry.getKey().getBlock().getState() instanceof ShulkerBox box)
+            for(ItemStack item:box.getSnapshotInventory().getContents())collectExternal(item,external);
+        for(var entry:m.droppedBy.entrySet())if(entry.getValue().equals(p.getUniqueId())&&Bukkit.getEntity(entry.getKey()) instanceof Item item&&item.isValid())collectExternal(item.getItemStack(),external);
+        ((KitModule)core().module("kits")).refillTierPlayer(p,m.kits.get(p.getUniqueId()),external);
+    }
     private void openRegear(Player p,Match m){
         Menu menu=menu(p,27,"Regear");footer(menu,18,26);
         put(menu,13,icon(Material.LIME_DYE,"§a§lRegear Now","Restock the existing kitroom whitelist","Only items from your validated kit"),()->{
             if(!isActive(p)||matches.get(p.getUniqueId())!=m||!regearReady(p))return;
-            List<ItemStack> external=new ArrayList<>();
-            for(ItemStack item:p.getEnderChest().getContents())collectExternal(item,external);
-            for(ItemStack item:p.getInventory().getContents())if(item!=null&&item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof ShulkerBox box)
-                for(ItemStack nested:box.getSnapshotInventory().getContents())collectExternal(nested,external);
-            for(var entry:m.containers.entrySet())if(entry.getValue().equals(p.getUniqueId())&&entry.getKey().getBlock().getState() instanceof ShulkerBox box)
-                for(ItemStack item:box.getSnapshotInventory().getContents())collectExternal(item,external);
-            for(var entry:m.droppedBy.entrySet())if(entry.getValue().equals(p.getUniqueId())&&Bukkit.getEntity(entry.getKey()) instanceof Item item&&item.isValid())collectExternal(item.getItemStack(),external);
-            ((KitModule)core().module("kits")).refillTierPlayer(p,m.kits.get(p.getUniqueId()),external);p.closeInventory();
+            refillValidated(p,m);p.closeInventory();
         });
         display(p,menu);
     }
@@ -1225,7 +1180,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent event){
         if(!(event.getPlayer() instanceof Player p)||event.getInventory().getHolder() instanceof Menu)return;
         Match m=matches.get(p.getUniqueId());Inventory inv=event.getInventory();
-        if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
+        if(m==null||!m.backedUp){if(editingKit(p)&&((KitModule)core().module("kits")).isTierEditorInventory(p,inv))return;if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         if(inv.getType()==InventoryType.ENDER_CHEST&&m.type==TierKitRules.Type.ABOVE)return;
         if(inv.getHolder() instanceof ShulkerBox box&&p.getUniqueId().equals(m.containers.get(box.getLocation())))return;

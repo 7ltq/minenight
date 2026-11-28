@@ -74,7 +74,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
             send(sender, "players-only");
             return true;
         }
-        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cYou are in a tier test."); return true; }
+        if (de.minenight.tiertest.TierTestModule.locked(player)&&(!(core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier)||!tier.isActive(player)||command.getName().equalsIgnoreCase("tpauto"))) { player.sendMessage("§cYou are in a tier test."); return true; }
         switch (command.getName().toLowerCase()) {
             case "tpa", "tpahere" -> sendRequest(player, args, command.getName().equalsIgnoreCase("tpahere"));
             case "tpaccept" -> answer(player, args, true);
@@ -130,7 +130,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
             send(sender, "not-online", "{player}", args[0]);
             return;
         }
-        if (de.minenight.tiertest.TierTestModule.locked(receiver)) { sender.sendMessage("§cThat player is in a tier test."); return; }
+        if (!sender.equals(receiver)&&!de.minenight.tiertest.TierTestModule.allowsTpa(sender,receiver)) { sender.sendMessage("§cDuring a tier test you can only teleport to your opponent."); return; }
         if (receiver.getUniqueId().equals(sender.getUniqueId())) {
             send(sender, "self-request");
             return;
@@ -155,7 +155,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
         }
         cooldowns.put(pair, now);
         Request request = new Request(pair, here, now);
-        if (autoAccept.contains(receiver.getUniqueId())) {
+        if (autoAccept.contains(receiver.getUniqueId())&&!de.minenight.tiertest.TierTestModule.locked(receiver)) {
             send(sender, "auto-accepted-sender", "{player}", receiver.getName());
             executeTeleport(request, sender, receiver);
             return;
@@ -184,6 +184,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
             Player requester = Bukkit.getPlayer(request.pair().sender());
             if (requester == null || !requester.isOnline()) continue;
             if (args.length == 1 && !requester.getName().equalsIgnoreCase(args[0])) continue;
+            if(!de.minenight.tiertest.TierTestModule.allowsTpa(requester,receiver))continue;
             if (selected == null || request.created() > selected.created()) selected = request;
         }
         if (selected == null) {
@@ -209,11 +210,17 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
     }
 
     private void executeTeleport(Request request, Player requester, Player receiver) {
-        if (de.minenight.tiertest.TierTestModule.locked(requester) || de.minenight.tiertest.TierTestModule.locked(receiver)) { requester.sendMessage("§cTeleport unavailable during a tier test."); return; }
+        if (!de.minenight.tiertest.TierTestModule.allowsTpa(requester,receiver)) { requester.sendMessage("§cTeleport unavailable during a tier test."); return; }
         Player traveler = request.here() ? receiver : requester;
         Player destination = request.here() ? requester : receiver;
         if (!traveler.isOnline() || !destination.isOnline()) {
             send(requester, "offline-before-teleport");
+            return;
+        }
+        if(de.minenight.tiertest.TierTestModule.locked(traveler)||de.minenight.tiertest.TierTestModule.locked(destination)){
+            boolean success=core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier&&tier.teleportOpponent(traveler,destination);
+            if(success){send(requester,"accepted-sender","{player}",receiver.getName());send(receiver,"accepted-receiver","{player}",requester.getName());}
+            else{send(requester,"teleport-failed");send(receiver,"teleport-failed");}
             return;
         }
         traveler.teleportAsync(destination.getLocation(), PlayerTeleportEvent.TeleportCause.COMMAND)
