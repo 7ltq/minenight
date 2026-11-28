@@ -34,6 +34,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private static final List<String> BIOMES = List.of("plain", "desert", "snow", "mushroom", "badlands");
     private static final List<Material> ICONS = List.of(Material.GRASS_BLOCK, Material.SAND, Material.SNOW_BLOCK, Material.MYCELIUM, Material.RED_SAND);
     private final Map<UUID, Invite> invites = new HashMap<>();
+    private final Map<UUID, Match> roundDrops = new HashMap<>();
+    private final NamespacedKey regearKey = new NamespacedKey("minenight","tier_regear");
     private final Map<UUID, Resume> suspendedMenus = new HashMap<>();
     private final Set<UUID> openingMenus = new HashSet<>();
     private final Set<UUID> pendingReopen = new HashSet<>();
@@ -63,6 +65,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
         final Map<UUID, Location> origins = new HashMap<>();
         boolean enteredArena;
         final Map<Location, UUID> containers = new HashMap<>();
+        final Map<Location, UUID> regearBoxes = new HashMap<>();
+        final Map<UUID, UUID> droppedBy = new HashMap<>();
+        final UUID regearId=UUID.randomUUID();
         Stage stage = Stage.TYPE;
         TierKitRules.Type type;
         String biome;
@@ -659,7 +664,10 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         Inventory top=event.getView().getTopInventory();
-        if(event.getClick()==ClickType.DROP||event.getClick()==ClickType.CONTROL_DROP||event.getRawSlot()==-999){event.setCancelled(true);return;}
+        
+        if(regearItem(event.getCursor())||regearItem(event.getCurrentItem())){
+            if(top.getType()!=InventoryType.CRAFTING){event.setCancelled(true);return;}
+        }
         if(top.getType()==InventoryType.CRAFTING){
             if(event.getRawSlot()>=0&&event.getRawSlot()<top.getSize())event.setCancelled(true);
         }else if(top.getType()==InventoryType.ENDER_CHEST&&m.type==TierKitRules.Type.ABOVE){
@@ -677,6 +685,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         if(event.getRawSlots().stream().noneMatch(i->i<top.getSize()))return;
+        if(regearItem(event.getOldCursor())){event.setCancelled(true);return;}
         if(top.getType()==InventoryType.ENDER_CHEST&&m.type==TierKitRules.Type.ABOVE)return;
         if(top.getHolder() instanceof ShulkerBox box&&p.getUniqueId().equals(m.containers.get(box.getLocation()))&&rules(m.type).allowsShulkerItem(event.getOldCursor()))return;
         event.setCancelled(true);
@@ -931,13 +940,17 @@ public final class TierTestModule extends MineNightModule implements Listener {
         for(Location l:new ArrayList<>(m.containers.keySet())){
             Block block=l.getBlock();if(block.getState() instanceof ShulkerBox||block.getType()==Material.ENDER_CHEST)block.setType(Material.AIR,false);
         }
-        m.containers.clear();
+        m.containers.clear();m.regearBoxes.clear();
+        for(UUID id:new ArrayList<>(m.droppedBy.keySet())){
+            Entity item=Bukkit.getEntity(id);if(item!=null)item.remove();roundDrops.remove(id,m);
+        }
+        m.droppedBy.clear();
     }
     @Override public void onDisable(){
         stopping=true;
         for(Match m:new HashSet<>(matches.values()))finish(m,null,"Tier test stopped.");
         for(Player p:Bukkit.getOnlinePlayers())if(recovery.contains(p.getUniqueId())&&!p.isDead())recover(p);
-        invites.clear();matches.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
+        invites.clear();matches.clear();roundDrops.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
     }
 
     private boolean frozen(Player p){Match m=matches.get(p.getUniqueId());return (m!=null&&m.backedUp&&m.stage!=Stage.ACTIVE)||(m==null&&recovery.contains(p.getUniqueId()));}
@@ -945,6 +958,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(!locked(event.getPlayer()))return;
         String command=event.getMessage().substring(1).split(" ",2)[0].toLowerCase(Locale.ROOT);int colon=command.indexOf(':');if(colon>=0)command=command.substring(colon+1);
         if(Set.of("tiertest","rerun","msg","tell","w","r","reply").contains(command))return;
+        if(command.equals("regear")&&isActive(event.getPlayer()))return;
         event.setCancelled(true);say(event.getPlayer(),msg("blocked","Action unavailable during a tier test."));
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void teleportGuard(PlayerTeleportEvent event){
@@ -988,11 +1002,80 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(b!=null&&b.playing()&&(b.stage!=Stage.ACTIVE||(source!=null&&a!=b)))event.setCancelled(true);
         if(source!=null&&a==null&&area(event.getEntity().getLocation())!=null)event.setCancelled(true);
     }
+    public boolean isActive(Player player){
+        Match m=matches.get(player.getUniqueId());
+        return m!=null&&current(m)&&m.stage==Stage.ACTIVE&&!m.deathScheduled;
+    }
+    private boolean regearItem(ItemStack item){
+        return item!=null&&item.getType()==Material.PURPLE_SHULKER_BOX&&item.hasItemMeta()&&item.getItemMeta().getPersistentDataContainer().has(regearKey,org.bukkit.persistence.PersistentDataType.STRING);
+    }
+    private String regearToken(Match m,UUID id){return m.regearId+":"+m.epoch+":"+id;}
+    private boolean validRegearItem(ItemStack item,Match m,UUID id){
+        return regearItem(item)&&regearToken(m,id).equals(item.getItemMeta().getPersistentDataContainer().get(regearKey,org.bukkit.persistence.PersistentDataType.STRING));
+    }
+    public boolean regear(Player p){
+        Match m=matches.get(p.getUniqueId());UUID id=p.getUniqueId();
+        if(!isActive(p)){say(p,"§cRegear is available during an active round only.");return true;}
+        for(ItemStack item:p.getInventory().getContents())if(validRegearItem(item,m,id)){say(p,"You already have a regear shulker.");return true;}
+        if(m.regearBoxes.containsValue(id)){say(p,"You already placed a regear shulker.");return true;}
+        if(p.getInventory().firstEmpty()<0){say(p,"Free an inventory slot first.");return true;}
+        ItemStack item=icon(Material.PURPLE_SHULKER_BOX,"§bRegear Shulker","Single-use","Place after the normal combat delay","Restocks your validated tier test kit");
+        ItemMeta meta=item.getItemMeta();meta.getPersistentDataContainer().set(regearKey,org.bukkit.persistence.PersistentDataType.STRING,regearToken(m,id));item.setItemMeta(meta);
+        p.getInventory().addItem(item);say(p,"Regear shulker added.");return true;
+    }
+    private boolean regearReady(Player p){
+        long wait=((KitModule)core().module("kits")).regearWaitMillis(p);
+        if(wait<=0)return true;
+        say(p,"§cWait "+((wait+999)/1000)+" seconds after taking damage.");return false;
+    }
+    private void collectExternal(ItemStack item,List<ItemStack> result){
+        if(item==null||item.getType().isAir())return;
+        result.add(item);
+        if(item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof ShulkerBox box)
+            for(ItemStack nested:box.getSnapshotInventory().getContents())collectExternal(nested,result);
+    }
+    private void openRegear(Player p,Match m){
+        Menu menu=menu(p,27,"Regear");footer(menu,18,26);
+        put(menu,13,icon(Material.LIME_DYE,"§a§lRegear Now","Restock the existing kitroom whitelist","Only items from your validated kit"),()->{
+            if(!isActive(p)||matches.get(p.getUniqueId())!=m||!regearReady(p))return;
+            List<ItemStack> external=new ArrayList<>();
+            for(ItemStack item:p.getEnderChest().getContents())collectExternal(item,external);
+            for(ItemStack item:p.getInventory().getContents())if(item!=null&&item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof ShulkerBox box)
+                for(ItemStack nested:box.getSnapshotInventory().getContents())collectExternal(nested,external);
+            for(var entry:m.containers.entrySet())if(entry.getValue().equals(p.getUniqueId())&&entry.getKey().getBlock().getState() instanceof ShulkerBox box)
+                for(ItemStack item:box.getSnapshotInventory().getContents())collectExternal(item,external);
+            for(var entry:m.droppedBy.entrySet())if(entry.getValue().equals(p.getUniqueId())&&Bukkit.getEntity(entry.getKey()) instanceof Item item&&item.isValid())collectExternal(item.getItemStack(),external);
+            ((KitModule)core().module("kits")).refillTierPlayer(p,m.kits.get(p.getUniqueId()),external);p.closeInventory();
+        });
+        display(p,menu);
+    }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void pickup(EntityPickupItemEvent event){
-        if(event.getEntity() instanceof Player p&&(locked(p)||area(event.getItem().getLocation())!=null))event.setCancelled(true);
+        Item item=event.getItem();Match dropped=roundDrops.get(item.getUniqueId());
+        if(event.getEntity() instanceof Player p){
+            Match m=matches.get(p.getUniqueId());
+            if(dropped!=null){
+                if(m!=dropped||!isActive(p)||!p.getUniqueId().equals(dropped.droppedBy.get(item.getUniqueId()))||!inside(m,item.getLocation()))event.setCancelled(true);
+                return;
+            }
+            if(locked(p)||area(item.getLocation())!=null)event.setCancelled(true);
+        }else if(dropped!=null)event.setCancelled(true);
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drop(PlayerDropItemEvent event){
-        if(locked(event.getPlayer()))event.setCancelled(true);
+        Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());
+        if(locked(p)&&(!isActive(p)||regearItem(event.getItemDrop().getItemStack())||!inside(m,event.getItemDrop().getLocation())))event.setCancelled(true);
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void trackDrop(PlayerDropItemEvent event){
+        Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());
+        if(m!=null&&isActive(p)){
+            UUID item=event.getItemDrop().getUniqueId();
+            roundDrops.put(item,m);m.droppedBy.put(item,p.getUniqueId());
+        }
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void mergeDrop(ItemMergeEvent event){
+        if(roundDrops.containsKey(event.getEntity().getUniqueId())||roundDrops.containsKey(event.getTarget().getUniqueId()))event.setCancelled(true);
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void hopperDrop(InventoryPickupItemEvent event){
+        if(roundDrops.containsKey(event.getItem().getUniqueId()))event.setCancelled(true);
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void craft(CraftItemEvent event){
         if(event.getWhoClicked() instanceof Player p&&locked(p))event.setCancelled(true);
@@ -1002,6 +1085,13 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(scheduleResume(p)){event.setCancelled(true);return;}
         if(frozen(p)){event.setCancelled(true);return;}
         if(block!=null){
+            if(m!=null&&m.regearBoxes.containsKey(block.getLocation())){
+                event.setCancelled(true);
+                if(event.getAction()==Action.RIGHT_CLICK_BLOCK&&event.getHand()==EquipmentSlot.HAND&&isActive(p)&&p.getUniqueId().equals(m.regearBoxes.get(block.getLocation()))&&regearReady(p)){
+                    m.regearBoxes.remove(block.getLocation());m.containers.remove(block.getLocation());block.setType(Material.AIR,false);openRegear(p,m);
+                }
+                return;
+            }
             Match region=area(block.getLocation());
             if(region!=null&&(region!=m||!m.playing())){event.setCancelled(true);return;}
             if(m!=null&&m.playing()&&block.getState() instanceof org.bukkit.block.Container&&!(block.getState() instanceof ShulkerBox&&p.getUniqueId().equals(m.containers.get(block.getLocation())))){event.setCancelled(true);return;}
@@ -1023,13 +1113,20 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m==null||!m.playing())return;
         if(m.stage!=Stage.ACTIVE||region!=m){event.setCancelled(true);return;}
         Block block=event.getBlockPlaced();boolean shulker=block.getState() instanceof ShulkerBox;
+        if(shulker&&regearItem(event.getItemInHand())){
+            if(!validRegearItem(event.getItemInHand(),m,p.getUniqueId())||!regearReady(p)||m.regearBoxes.containsValue(p.getUniqueId()))event.setCancelled(true);
+            return;
+        }
         if(shulker||block.getType()==Material.ENDER_CHEST){
             if(m.type!=TierKitRules.Type.ABOVE){event.setCancelled(true);return;}
         }else if(block.getState() instanceof org.bukkit.block.Container){event.setCancelled(true);}
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void placed(BlockPlaceEvent event){
         Match m=matches.get(event.getPlayer().getUniqueId());Block block=event.getBlockPlaced();
-        if(m!=null&&m.stage==Stage.ACTIVE&&(block.getState() instanceof ShulkerBox||block.getType()==Material.ENDER_CHEST))m.containers.put(block.getLocation(),event.getPlayer().getUniqueId());
+        if(m!=null&&m.stage==Stage.ACTIVE&&(block.getState() instanceof ShulkerBox||block.getType()==Material.ENDER_CHEST)){
+            m.containers.put(block.getLocation(),event.getPlayer().getUniqueId());
+            if(validRegearItem(event.getItemInHand(),m,event.getPlayer().getUniqueId()))m.regearBoxes.put(block.getLocation(),event.getPlayer().getUniqueId());
+        }
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void breakBlock(BlockBreakEvent event){
         Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());Block block=event.getBlock();Match region=area(block.getLocation());
@@ -1039,6 +1136,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m.containers.containsKey(block.getLocation())){
             event.setCancelled(true);
             if(!p.getUniqueId().equals(m.containers.get(block.getLocation())))return;
+            if(m.regearBoxes.remove(block.getLocation())!=null){m.containers.remove(block.getLocation());block.setType(Material.AIR,false);return;}
             if(p.getInventory().firstEmpty()<0){say(p,"Free an inventory slot first.");return;}
             ItemStack item=new ItemStack(block.getType());
             if(block.getState() instanceof ShulkerBox box&&item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta){meta.setBlockState(box);item.setItemMeta(meta);}

@@ -436,7 +436,10 @@ public final class KitModule extends MineNightModule implements Listener {
             sender.sendMessage("Players only.");
             return true;
         }
-        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cKits are locked during a tier test."); return true; }
+        if (de.minenight.tiertest.TierTestModule.locked(player)) {
+            if (command.getName().equalsIgnoreCase("regear") && core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier) return tier.regear(player);
+            player.sendMessage("§cKits are locked during a tier test."); return true;
+        }
         String name = command.getName().toLowerCase();
         if (name.matches("k[1-9]")) {
             loadKit(player, player.getUniqueId(), Integer.parseInt(name.substring(1)));
@@ -589,13 +592,24 @@ public final class KitModule extends MineNightModule implements Listener {
             player.sendMessage(PREFIX + "Save kit " + kit + " first.");
             return;
         }
+        refillFromSnapshot(player, readItems(playerData.getList(path + ".storage", List.of()), 36), playerData.getItemStack(path + ".offhand"), List.of());
+    }
+
+    public long regearDelayMillis() { return Math.max(0, getConfig().getLong("regear.combat-delay-seconds",10)) * 1000L; }
+    public long regearWaitMillis(Player player) {
+        return Math.max(0,regearDelayMillis()-(System.currentTimeMillis()-lastHit.getOrDefault(player.getUniqueId(),0L)));
+    }
+    public void refillTierPlayer(Player player, de.minenight.tiertest.TierKitSnapshot kit, List<ItemStack> external) {
+        if (!(core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier) || !tier.isActive(player)) return;
+        refillFromSnapshot(player,kit.storage(),kit.offhand(),external);
+    }
+    private void refillFromSnapshot(Player player, ItemStack[] desiredStorage, ItemStack desiredOffhand, List<ItemStack> external) {
         PlayerInventory inv = player.getInventory();
         ItemStack[] storage = inv.getStorageContents();
         ItemStack[] armor = inv.getArmorContents();
         ItemStack[] offhand = {inv.getItemInOffHand()};
-        ItemStack[] desiredStorage = readItems(playerData.getList(path + ".storage", List.of()), storage.length);
         ItemStack[] desired = Arrays.copyOf(desiredStorage, storage.length + 1);
-        desired[storage.length] = playerData.getItemStack(path + ".offhand");
+        desired[storage.length] = desiredOffhand;
         int moved = 0;
         int created = 0;
         int blocked = 0;
@@ -635,7 +649,9 @@ public final class KitModule extends MineNightModule implements Listener {
                 blocked++;
                 continue;
             }
-            int shortage = targetAmount(desired, wanted) - ownedAmount(storage, offhand, armor, wanted);
+            int outside=0;
+            for(ItemStack item:external)if(matchingRegearItem(item,wanted))outside+=item.getAmount();
+            int shortage = targetAmount(desired, wanted) - ownedAmount(storage, offhand, armor, wanted) - outside;
             if (shortage <= 0) continue;
             int slotMissing = current == null || current.getType().isAir()
                     ? wanted.getAmount() : Math.max(0, wanted.getAmount() - current.getAmount());
