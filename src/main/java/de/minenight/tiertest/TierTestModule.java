@@ -845,7 +845,10 @@ public final class TierTestModule extends MineNightModule implements Listener {
             else if(m.center!=null)event.setRespawnLocation(m.center.clone());
             Bukkit.getScheduler().runTaskLater(core(),()->{Player player=event.getPlayer();if(current(m)&&m.stage==Stage.REVIEW&&m.score.winner()!=null&&!m.score.winner().equals(player.getUniqueId()))player.sendTitle("§cYOU LOST!",m.score.score().first()+" - "+m.score.score().second(),0,60,10);},1);
         }
-        else if(recovery.contains(event.getPlayer().getUniqueId()))Bukkit.getScheduler().runTaskLater(core(),()->{Player player=event.getPlayer();Location origin=YamlConfiguration.loadConfiguration(backup(player.getUniqueId())).getLocation("location");if(recover(player))returnToOrigin(player,origin);},1);
+        else if(recovery.contains(event.getPlayer().getUniqueId()))Bukkit.getScheduler().runTaskLater(core(),()->{
+            Player player=event.getPlayer();Location origin=YamlConfiguration.loadConfiguration(backup(player.getUniqueId())).getLocation("location");
+            if(recover(player)){Match paused=matches.get(player.getUniqueId());if(paused!=null&&paused.stage==Stage.SUSPENDED){showPausedBoard(paused,player);sendSpawn(player);}else returnToOrigin(player,origin);}
+        },1);
     }
     private void resolve(Match m,long epoch){
         if(!current(m)||m.epoch!=epoch||m.stage!=Stage.ACTIVE)return;
@@ -950,6 +953,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
         m.stage=Stage.SUSPENDED;m.backedUp=false;m.resuming=false;++m.epoch;
         m.pauseVotes.clear();m.resumeVotes.clear();m.absent.clear();m.dead.clear();m.deathScheduled=false;
         clearContainers(m);m.center=null;
+        for(UUID id:m.ids()){
+            Player p=Bukkit.getPlayer(id);if(p!=null&&pausedBaseBoards.containsKey(id))removePausedBoard(m,p);
+        }
         m.boards.clear();
         for(UUID id:m.ids()){
             Player p=Bukkit.getPlayer(id);if(p==null)continue;
