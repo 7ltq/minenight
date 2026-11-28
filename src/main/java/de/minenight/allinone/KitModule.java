@@ -617,6 +617,7 @@ public final class KitModule extends MineNightModule implements Listener {
     private static void flatten(ItemStack item,List<ItemStack> list){
         if(item==null||item.getType().isAir())return;
         if(isShulker(item)&&item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof org.bukkit.block.ShulkerBox box){
+            list.add(new ItemStack(item.getType()));
             for(ItemStack nested:box.getSnapshotInventory().getContents())flatten(nested,list);
         }else list.add(item);
     }
@@ -628,13 +629,20 @@ public final class KitModule extends MineNightModule implements Listener {
         List<ItemStack> targets=new ArrayList<>(),owned=new ArrayList<>();
         for(ItemStack[] array:desired)for(ItemStack item:array)flatten(item,targets);
         for(ItemStack[] array:actual)for(ItemStack item:array)flatten(item,owned);
-        owned.addAll(external);
+        for(ItemStack item:external)flatten(item,owned);
         int added=0;
         for(int section=0;section<actual.length;section++)for(int slot=0;slot<actual[section].length;slot++){
             ItemStack wanted=desired[section][slot],current=actual[section][slot];
             if(!tierRefillable(wanted))continue;
             if(isShulker(wanted)){
-                if(current==null||current.getType().isAir())continue;
+                if(current==null||current.getType().isAir()){
+                    int targetBoxes=0,ownedBoxes=0;
+                    for(ItemStack item:targets)if(item.getType()==wanted.getType())targetBoxes+=item.getAmount();
+                    for(ItemStack item:owned)if(item.getType()==wanted.getType())ownedBoxes+=item.getAmount();
+                    if(ownedBoxes>=targetBoxes)continue;
+                    current=new ItemStack(wanted.getType());
+                    actual[section][slot]=current;owned.add(current.clone());added++;
+                }
                 if(current.getType()!=wanted.getType()||!(current.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta currentMeta)||!(wanted.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta wantedMeta)||!(currentMeta.getBlockState() instanceof org.bukkit.block.ShulkerBox box)||!(wantedMeta.getBlockState() instanceof org.bukkit.block.ShulkerBox template))continue;
                 ItemStack[] contents=box.getSnapshotInventory().getContents(),goal=template.getSnapshotInventory().getContents();
                 for(int i=0;i<contents.length;i++){ItemStack previous=contents[i];contents[i]=refillTierSlot(previous,goal[i],targets,owned);added+=amount(contents[i])-amount(previous);}
@@ -644,15 +652,43 @@ public final class KitModule extends MineNightModule implements Listener {
                 added+=amount(updated)-amount(current);actual[section][slot]=updated;
             }
         }
+        // Top up matching stacks or free inventory slots when the original slot is occupied.
+        for(ItemStack wanted:targets){
+            if(!tierRefillable(wanted)||isShulker(wanted))continue;
+            for(int slot=0;slot<storage.length;slot++){
+                ItemStack current=storage[slot];
+                if(amount(current)==0||!tierMatches(current,wanted))continue;
+                ItemStack goal=wanted.clone();goal.setAmount(wanted.getMaxStackSize());
+                ItemStack result=refillTierSlot(current,goal,targets,owned);
+                added+=amount(result)-amount(current);storage[slot]=result;
+            }
+            for(int slot=0;slot<storage.length;slot++){
+                if(amount(storage[slot])!=0)continue;
+                ItemStack goal=wanted.clone();goal.setAmount(wanted.getMaxStackSize());
+                ItemStack result=refillTierSlot(null,goal,targets,owned);
+                if(result==null)break;
+                added+=amount(result);storage[slot]=result;
+            }
+        }
         inv.setStorageContents(storage);inv.setArmorContents(armor);inv.setItemInOffHand(offhand[0]==null?new ItemStack(Material.AIR):offhand[0]);player.getEnderChest().setContents(ender);
         player.updateInventory();player.sendMessage(PREFIX+"Regeared "+added+" item(s). Totems, Elytra and Rockets are excluded.");
     }
     private static int amount(ItemStack item){return item==null||item.getType().isAir()?0:item.getAmount();}
+    private static boolean tierMatches(ItemStack a,ItemStack b){
+        if(a==null||b==null||a.getType()!=b.getType()||a.getType().isAir())return false;
+        if(a.isSimilar(b))return true;
+        if(a.getType().getMaxDurability()==0)return false;
+        ItemStack first=a.clone(),second=b.clone();
+        if(first.getItemMeta() instanceof Damageable x&&second.getItemMeta() instanceof Damageable y){
+            x.setDamage(0);y.setDamage(0);first.setItemMeta(x);second.setItemMeta(y);
+        }
+        return first.isSimilar(second);
+    }
     private static ItemStack refillTierSlot(ItemStack current,ItemStack wanted,List<ItemStack> targets,List<ItemStack> owned){
-        if(!tierRefillable(wanted)||isShulker(wanted)||amount(current)>0&&!matchingRegearItem(current,wanted))return current;
+        if(!tierRefillable(wanted)||isShulker(wanted)||amount(current)>0&&!tierMatches(current,wanted))return current;
         int target=0,have=0;
-        for(ItemStack item:targets)if(matchingRegearItem(item,wanted))target+=item.getAmount();
-        for(ItemStack item:owned)if(matchingRegearItem(item,wanted))have+=item.getAmount();
+        for(ItemStack item:targets)if(tierMatches(item,wanted))target+=item.getAmount();
+        for(ItemStack item:owned)if(tierMatches(item,wanted))have+=item.getAmount();
         int add=Math.min(target-have,Math.min(wanted.getAmount()-amount(current),wanted.getMaxStackSize()-amount(current)));
         if(add<=0)return current;
         ItemStack fresh=wanted.clone();fresh.setAmount(add);owned.add(fresh.clone());

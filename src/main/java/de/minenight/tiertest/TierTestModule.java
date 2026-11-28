@@ -547,7 +547,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         put(ender,31,icon(Material.ARROW,"§bBack to kit preview"),()->preview(p,m,raw,kitName));display(p,ender);
     }
     private void startKitEdit(Player p,Match m){
-        if(!canEditKit(p)||kitEditing.contains(p.getUniqueId()))return;
+        if(!canEditKit(p)||kitEditing.contains(p.getUniqueId())||recovery.contains(p.getUniqueId()))return;
         UUID id=p.getUniqueId();
         try{
             openingMenus.add(id);
@@ -618,7 +618,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
             return;
         }
         Match m=matches.get(p.getUniqueId());
-        if(m==null||!m.backedUp){if(editingKit(p)){if(!((KitModule)core().module("kits")).isTierEditorInventory(p,event.getView().getTopInventory()))event.setCancelled(true);return;}if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
+        if(m==null||!m.backedUp){if(editingKit(p)){if(!((KitModule)core().module("kits")).isTierEditorInventory(p,event.getView().getTopInventory())||event.getSlotType()==InventoryType.SlotType.RESULT)event.setCancelled(true);return;}if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         Inventory top=event.getView().getTopInventory();
         
@@ -1110,13 +1110,13 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void collectExternal(ItemStack item,List<ItemStack> result){
         if(item==null||item.getType().isAir())return;
         result.add(item);
-        if(item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof ShulkerBox box)
-            for(ItemStack nested:box.getSnapshotInventory().getContents())collectExternal(nested,result);
     }
     private void refillValidated(Player p,Match m){
         List<ItemStack> external=new ArrayList<>();
-        for(var entry:m.containers.entrySet())if(entry.getValue().equals(p.getUniqueId())&&entry.getKey().getBlock().getState() instanceof ShulkerBox box)
+        for(var entry:m.containers.entrySet())if(entry.getValue().equals(p.getUniqueId())&&entry.getKey().getBlock().getState() instanceof ShulkerBox box&&!m.regearBoxes.containsKey(entry.getKey())){
+            external.add(new ItemStack(box.getType()));
             for(ItemStack item:box.getSnapshotInventory().getContents())collectExternal(item,external);
+        }
         for(var entry:m.droppedBy.entrySet())if(entry.getValue().equals(p.getUniqueId())&&Bukkit.getEntity(entry.getKey()) instanceof Item item&&item.isValid())collectExternal(item.getItemStack(),external);
         ((KitModule)core().module("kits")).refillTierPlayer(p,m.kits.get(p.getUniqueId()),external);
     }
