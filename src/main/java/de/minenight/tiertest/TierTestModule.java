@@ -665,6 +665,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         Inventory top=event.getView().getTopInventory();
         
+        if(top.getType()!=InventoryType.CRAFTING&&(event.getClick()==ClickType.NUMBER_KEY&&event.getHotbarButton()>=0&&regearItem(p.getInventory().getItem(event.getHotbarButton()))||event.getClick()==ClickType.SWAP_OFFHAND&&regearItem(p.getInventory().getItemInOffHand()))){event.setCancelled(true);return;}
         if(regearItem(event.getCursor())||regearItem(event.getCurrentItem())){
             if(top.getType()!=InventoryType.CRAFTING){event.setCancelled(true);return;}
         }
