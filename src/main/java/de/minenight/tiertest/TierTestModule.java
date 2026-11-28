@@ -609,7 +609,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
         catch(Exception error){say(p,"§cCould not save kit. Your draft was kept.");getLogger().log(java.util.logging.Level.WARNING,"Tier kit save failed",error);return;}
         m.drafts.remove(p.getUniqueId());
         say(p,"§aKit "+draft.number+" saved.");report(p,result);
-        preview(p,m,result.kit(),"Kit "+draft.number);
+        UUID id=p.getUniqueId();
+        m.kits.put(id,result.kit());m.kitNames.put(id,"Kit "+draft.number);
+        if(m.kits.size()==2){m.stage=Stage.BIOME;openBoth(m);}else updateChoices(p,m);
     }
     private void resumeNow(Player p,Match m){
         if(!current(m)||m.backedUp)return;
@@ -826,8 +828,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
             tell(m,"Final score: "+m.score.score().first()+" - "+m.score.score().second()+". /rerun this round to request a rerun.");
             scheduleReview(m,epoch,setting("final-review-seconds",8,1,30));
         }else{
-            tell(m,"Score: "+m.score.score().first()+" - "+m.score.score().second()+". Next round in 3 seconds.");
-            for(UUID id:m.ids()){Player p=Bukkit.getPlayer(id);if(p!=null&&!p.isDead())waitAtSpawn(m,p);}
+            tell(m,"Score: "+m.score.score().first()+" - "+m.score.score().second()+". Next round in "+setting("round-review-seconds",3,1,30)+" seconds.");
+            for(UUID id:m.dead){Player p=Bukkit.getPlayer(id);if(p!=null&&!p.isDead())waitAtSpawn(m,p);}
             scheduleReview(m,epoch,setting("round-review-seconds",3,1,30));
         }
     }
