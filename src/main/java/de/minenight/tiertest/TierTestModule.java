@@ -25,7 +25,6 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scoreboard.*;
 import net.kyori.adventure.text.Component;
@@ -256,15 +255,25 @@ public final class TierTestModule extends MineNightModule implements Listener {
             }
             report(p,rules(type).sanitize(kit));return true;
         }
+        if(args.length==1&&args[0].equalsIgnoreCase("icons")){
+            if(locked(p)){say(p,msg("blocked","Action unavailable during a tier test."));return true;}
+            boolean heads=de.minenight.allinone.GuiPlayerIcons.toggle(p);
+            say(p,heads?"Player head icons enabled.":"Name tag icons enabled (head rendering fallback).");
+            return true;
+        }
         if(args.length>0 && args[0].equalsIgnoreCase("leave")) {
             if(m!=null) finish(m,m.backedUp?m.other(id):null,"Player left the tier test.");
             else { invites.values().removeIf(i->i.from.equals(id)||i.to.equals(id)); say(p,"No active tier test."); }
             return true;
         }
-        if(args.length==2 && (args[0].equalsIgnoreCase("accept")||args[0].equalsIgnoreCase("decline"))) {
+        if(args.length>=1 && (args[0].equalsIgnoreCase("accept")||args[0].equalsIgnoreCase("decline"))) {
+            if(args.length>2){say(p,"Usage: /tiertest "+args[0].toLowerCase(Locale.ROOT)+" [player]");return true;}
             Invite i=invites.get(id);
-            Player a=Bukkit.getPlayerExact(args[1]);
-            if(i==null||a==null||!i.from.equals(a.getUniqueId())||i.expires<System.currentTimeMillis()){say(p,"No valid invitation.");return true;}
+            if(i==null){say(p,"You have no pending tier test invitation.");return true;}
+            if(i.expires<System.currentTimeMillis()){invites.remove(id,i);say(p,"That invitation has expired.");return true;}
+            Player a=Bukkit.getPlayer(i.from);
+            if(a==null){invites.remove(id,i);say(p,"The inviting player is no longer online.");return true;}
+            if(args.length==2&&!a.getName().equalsIgnoreCase(args[1])){say(p,"Your pending invitation is from "+a.getName()+".");return true;}
             invites.remove(id);
             if(args[0].equalsIgnoreCase("decline")){say(a,p.getName()+" declined the tier test.");return true;}
             if(!available(p)||!available(a)){say(p,"A player is no longer available.");return true;}
@@ -284,7 +293,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> choices=List.of();
         if(command.getName().equals("tiertest")) {
-            if(args.length==1) choices=List.of("accept","decline","leave","check");
+            if(args.length==1) choices=List.of("accept","decline","leave","check","icons");
             else if(args.length==2&&args[0].equalsIgnoreCase("check"))choices=List.of("below","above");
             else if(args.length==3&&args[0].equalsIgnoreCase("check"))choices=List.of("1","2","3","4","5","6","7","8","9");
             else if(args.length==2&&sender instanceof Player p&&invites.containsKey(p.getUniqueId()))choices=List.of(name(invites.get(p.getUniqueId()).from));
@@ -312,10 +321,12 @@ public final class TierTestModule extends MineNightModule implements Listener {
         int last=Math.max(0,(players.size()-1)/21);int index=Math.max(0,Math.min(last,page));
         Menu menu=menu(p,27,"Select Opponent");
         for(int i=index*21;i<Math.min(players.size(),index*21+21);i++){
-            Player other=players.get(i);ItemStack head=icon(Material.PLAYER_HEAD,other.getName());
-            SkullMeta meta=(SkullMeta)head.getItemMeta();meta.setOwningPlayer(other);head.setItemMeta(meta);
+            Player other=players.get(i);
+            ItemStack head=icon(de.minenight.allinone.GuiPlayerIcons.material(p),other.getName(),"Click to invite");
+            de.minenight.allinone.GuiPlayerIcons.applyProfile(head,other);
             put(menu,i-index*21,head,()->invite(p,other));
         }
+        put(menu,22,icon(Material.NAME_TAG,"Toggle player icons",de.minenight.allinone.GuiPlayerIcons.useHeads(p)?"Current: Player heads":"Current: Name tags","Click if heads are clipped"),()->{de.minenight.allinone.GuiPlayerIcons.toggle(p);openOpponents(p,index);});
         if(index>0)put(menu,21,icon(Material.ARROW,"Previous"),()->openOpponents(p,index-1));
         if(index<last)put(menu,26,icon(Material.ARROW,"Next"),()->openOpponents(p,index+1));
         p.openInventory(menu.inventory);
@@ -327,7 +338,15 @@ public final class TierTestModule extends MineNightModule implements Listener {
         Invite invite=new Invite(from,to,System.currentTimeMillis()+1000L*setting("invitation-seconds",60,5,300));
         invites.put(to,invite);a.closeInventory();
         say(a,"Invitation sent to "+b.getName()+".");
-        say(b,a.getName()+" invited you. /tiertest accept "+a.getName()+" or /tiertest decline "+a.getName());
+        say(b,a.getName()+" invited you to a tier test.");
+        b.sendMessage(Component.text("[Accept]",net.kyori.adventure.text.format.NamedTextColor.GREEN)
+                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/tiertest accept "+a.getName()))
+                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Accept the invitation")))
+                .append(Component.space())
+                .append(Component.text("[Decline]",net.kyori.adventure.text.format.NamedTextColor.RED)
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/tiertest decline "+a.getName()))
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Decline the invitation")))));
+        say(b,"You can also use /tiertest accept or /tiertest decline.");
         Bukkit.getScheduler().runTaskLater(core(),()->{if(invites.remove(to,invite)){Player p=Bukkit.getPlayer(from);if(p!=null)say(p,msg("invite-expired","Invitation expired."));}},20L*setting("invitation-seconds",60,5,300));
     }
     private void openBoth(Match m){for(UUID id:m.ids()){Player p=Bukkit.getPlayer(id);if(p!=null)openStage(p,m);}}

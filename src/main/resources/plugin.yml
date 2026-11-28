@@ -16,7 +16,7 @@ softdepend:
 commands:
   tiertest:
     description: Open the tier test menu or check a kit.
-    usage: /tiertest [check|accept|decline|leave]
+    usage: /tiertest [check|accept|decline|leave|icons]
     permission: minenight.tiertest.use
   below:
     description: Save the Below HT3 premade kit.

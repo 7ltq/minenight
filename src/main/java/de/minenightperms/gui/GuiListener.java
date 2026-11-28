@@ -74,7 +74,7 @@ public class GuiListener implements Listener {
                     player.openInventory(GuiManager.buildGroupList(plugin));
                 } else if (slot == 16) {
                     session.setState(GuiSession.State.SET_ROLE_PLAYER_LIST);
-                    player.openInventory(GuiManager.buildPlayerList(plugin));
+                    player.openInventory(GuiManager.buildPlayerList(plugin, player));
                 }
             }
 
@@ -358,7 +358,7 @@ public class GuiListener implements Listener {
             case SET_ROLE_GROUP_PICK -> {
                 if (item.getType() == Material.ARROW) {
                     session.setState(GuiSession.State.SET_ROLE_PLAYER_LIST);
-                    player.openInventory(GuiManager.buildPlayerList(plugin));
+                    player.openInventory(GuiManager.buildPlayerList(plugin, player));
                     return;
                 }
                 List<Group> groupList = new ArrayList<>(plugin.getGroupManager().getGroups());
@@ -374,7 +374,7 @@ public class GuiListener implements Listener {
                             "<#91B2FF>✔ <white>" + targetName + "<#91B2FF> → <white>" + groupName));
                     }
                     session.setState(GuiSession.State.SET_ROLE_PLAYER_LIST);
-                    player.openInventory(GuiManager.buildPlayerList(plugin));
+                    player.openInventory(GuiManager.buildPlayerList(plugin, player));
                 }
             }
 
