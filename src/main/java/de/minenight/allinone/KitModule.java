@@ -611,7 +611,12 @@ public final class KitModule extends MineNightModule implements Listener {
         return Math.max(0,regearDelayMillis()-(System.currentTimeMillis()-lastHit.getOrDefault(player.getUniqueId(),0L)));
     }
     private static boolean tierRefillable(ItemStack item){
-        return item!=null&&!item.getType().isAir()&&!Set.of(Material.TOTEM_OF_UNDYING,Material.ELYTRA,Material.FIREWORK_ROCKET).contains(item.getType());
+        if(item==null||item.getType().isAir())return false;
+        Material material=item.getType();
+        String name=material.name();
+        return !Set.of(Material.TOTEM_OF_UNDYING,Material.ELYTRA,Material.FIREWORK_ROCKET,Material.TURTLE_HELMET).contains(material)
+                &&!name.endsWith("_HELMET")&&!name.endsWith("_CHESTPLATE")&&!name.endsWith("_LEGGINGS")&&!name.endsWith("_BOOTS")
+                &&!name.endsWith("_HORSE_ARMOR")&&!name.endsWith("_NAUTILUS_ARMOR")&&material!=Material.WOLF_ARMOR;
     }
     private static boolean isShulker(ItemStack item){return item!=null&&item.getType().name().endsWith("SHULKER_BOX");}
     private static void flatten(ItemStack item,List<ItemStack> list){
@@ -671,7 +676,7 @@ public final class KitModule extends MineNightModule implements Listener {
             }
         }
         inv.setStorageContents(storage);inv.setArmorContents(armor);inv.setItemInOffHand(offhand[0]==null?new ItemStack(Material.AIR):offhand[0]);player.getEnderChest().setContents(ender);
-        player.updateInventory();player.sendMessage(PREFIX+"Regeared "+added+" item(s). Totems, Elytra and Rockets are excluded.");
+        player.updateInventory();player.sendMessage(PREFIX+"Regeared "+added+" item(s). Totems, Elytra, Rockets and armor are excluded.");
     }
     private static int amount(ItemStack item){return item==null||item.getType().isAir()?0:item.getAmount();}
     private static boolean tierMatches(ItemStack a,ItemStack b){
