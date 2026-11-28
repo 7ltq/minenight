@@ -212,6 +212,16 @@ public final class KitModule extends MineNightModule implements Listener {
         return playerData.contains(kitPath(id, number) + ".storage");
     }
 
+    public java.util.Optional<de.minenight.tiertest.TierKitSnapshot> snapshotForTierTest(UUID owner, int number) {
+        if (number < 1 || number > 9 || !kitExists(owner, number)) return java.util.Optional.empty();
+        String path = kitPath(owner, number);
+        return java.util.Optional.of(new de.minenight.tiertest.TierKitSnapshot(
+                readItems(playerData.getList(path + ".storage", List.of()), 36),
+                readItems(playerData.getList(path + ".armor", List.of()), 4),
+                playerData.getItemStack(path + ".offhand"),
+                readItems(playerData.getList(enderPath(owner, number), List.of()), 27)));
+    }
+
     private void loadKit(Player player, UUID owner, int number) {
         String path = kitPath(owner, number);
         if (!kitExists(owner, number)) {

@@ -1,0 +1,31 @@
+wins:
+  below: 3
+  above: 4
+rules:
+  limits:
+    RESPAWN_ANCHOR: 64
+    FIREWORK_ROCKET: 24
+  max-armor-pieces: 4
+  banned-items:
+    - BEACON
+    - MILK_BUCKET
+    - ENCHANTED_GOLDEN_APPLE
+  banned-effects: []
+  below:
+    limits:
+      TOTEM_OF_UNDYING: 14
+    allow-weakness-arrows: false
+    allow-weakness-potions: false
+  above:
+    limits:
+      TOTEM_OF_UNDYING: 8
+    allow-weakness-arrows: true
+    allow-weakness-potions: false
+    shulker-contents:
+      - POTION
+      - SPLASH_POTION
+      - LINGERING_POTION
+      - END_CRYSTAL
+      - OBSIDIAN
+      - ENDER_PEARL
+      - EXPERIENCE_BOTTLE
