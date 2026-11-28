@@ -34,6 +34,10 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private static final List<String> BIOMES = List.of("plain", "desert", "snow", "mushroom", "badlands");
     private static final List<Material> ICONS = List.of(Material.GRASS_BLOCK, Material.SAND, Material.SNOW_BLOCK, Material.MYCELIUM, Material.RED_SAND);
     private final Map<UUID, Invite> invites = new HashMap<>();
+    private final Map<UUID, Resume> suspendedMenus = new HashMap<>();
+    private final Set<UUID> openingMenus = new HashSet<>();
+    private final Set<UUID> pendingReopen = new HashSet<>();
+    private record Resume(Match match, Stage stage, Runnable action, long after) {}
     private final Map<UUID, Match> matches = new HashMap<>();
     private final Map<UUID, Scoreboard> originalBoards = new HashMap<>();
     private final Set<UUID> internalTeleport = new HashSet<>();
@@ -77,9 +81,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
         final UUID owner;
         final Map<Integer, Runnable> actions = new HashMap<>();
         final Inventory inventory;
-        Menu(UUID owner, int size, String title) {
+        Stage stage;
+        Runnable resume;
+        Menu(UUID owner, int size, Component title) {
             this.owner = owner;
-            inventory = size == 27 ? Bukkit.createInventory(this, InventoryType.BARREL, legacy(title)) : Bukkit.createInventory(this, size, legacy(title));
+            inventory = size == 27 ? Bukkit.createInventory(this, InventoryType.BARREL, title) : Bukkit.createInventory(this, size, title);
         }
         @Override public Inventory getInventory() { return inventory; }
     }
@@ -289,7 +295,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
             return true;
         }
         if(args.length!=0) return false;
-        if(m!=null) { if(!m.backedUp) openStage(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
+        if(m!=null) { if(!m.backedUp) resumeNow(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
         else if(available(p)) openOpponents(p,0);
         else say(p,"You are not available for a tier test.");
         return true;
@@ -308,31 +314,55 @@ public final class TierTestModule extends MineNightModule implements Listener {
         return choices.stream().filter(v->v.toLowerCase(Locale.ROOT).startsWith(prefix)).toList();
     }
 
+    private static final net.kyori.adventure.text.format.TextColor BLUE = net.kyori.adventure.text.format.TextColor.color(0x5B9BD5);
+    private static final net.kyori.adventure.text.format.TextColor LIGHT = net.kyori.adventure.text.format.TextColor.color(0x91C8FF);
+    private static final net.kyori.adventure.text.format.TextColor MUTED = net.kyori.adventure.text.format.TextColor.color(0xA4B4C6);
+    private static Component flat(Component c){return c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC,false);}
     private ItemStack icon(Material material,String title,String... lore) {
         ItemStack item=new ItemStack(material);ItemMeta meta=item.getItemMeta();
-        meta.displayName(legacy(title));
-        meta.lore(Arrays.stream(lore).map(TierTestModule::legacy).toList());
+        Component name=legacy(title);
+        if(name.color()==null&&!title.startsWith("§"))name=name.color(LIGHT);
+        meta.displayName(flat(name));
+        meta.lore(Arrays.stream(lore).map(line->flat(line.startsWith("§")?legacy(line):Component.text(line,MUTED))).toList());
         item.setItemMeta(meta);return item;
+    }
+    private ItemStack selected(ItemStack item,boolean selected){
+        if(selected){ItemMeta meta=item.getItemMeta();meta.setEnchantmentGlintOverride(true);item.setItemMeta(meta);}
+        return item;
     }
     private Material configuredIcon(String key,Material fallback) {
         Material m=Material.matchMaterial(getConfig().getString("gui."+key,fallback.name()));
         return m!=null&&m.isItem()&&!m.isAir()?m:fallback;
     }
-    private Menu menu(Player p,int size,String title) {return new Menu(p.getUniqueId(),size,getConfig().getString("gui.title","Tier Test")+" » "+title);}
+    private Menu menu(Player p,int size,String title) {
+        Component header=net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize("<gradient:#4682B4:#91C8FF><bold>MineNight</bold></gradient><dark_gray> » </dark_gray>");
+        return new Menu(p.getUniqueId(),size,header.append(Component.text(title,LIGHT)));
+    }
     private void put(Menu menu,int slot,ItemStack item,Runnable action){menu.inventory.setItem(slot,item);menu.actions.put(slot,action);}
+    private void decoration(Menu menu,int slot,Material material){menu.inventory.setItem(slot,icon(material," "));}
+    private void footer(Menu menu,int first,int last){
+        for(int i=first;i<=last;i++)decoration(menu,i,i==first||i==last?Material.BLUE_STAINED_GLASS_PANE:Material.GRAY_STAINED_GLASS_PANE);
+    }
+    private void display(Player p,Menu menu){
+        UUID id=p.getUniqueId();
+        suspendedMenus.remove(id);openingMenus.add(id);
+        try{p.openInventory(menu.inventory);}finally{openingMenus.remove(id);}
+    }
     private void openOpponents(Player p,int page) {
         List<Player> players=Bukkit.getOnlinePlayers().stream().filter(other->!other.equals(p)&&p.canSee(other)&&available(other)).sorted(Comparator.comparing(Player::getName)).map(other->(Player)other).toList();
-        int last=Math.max(0,(players.size()-1)/21);int index=Math.max(0,Math.min(last,page));
-        Menu menu=menu(p,27,"Select Opponent");
-        for(int i=index*21;i<Math.min(players.size(),index*21+21);i++){
+        int last=Math.max(0,(players.size()-1)/18);int index=Math.max(0,Math.min(last,page));
+        Menu menu=menu(p,27,"Select Opponent");footer(menu,18,26);
+        for(int i=index*18;i<Math.min(players.size(),index*18+18);i++){
             Player other=players.get(i);
-            ItemStack head=icon(de.minenight.allinone.GuiPlayerIcons.material(p),other.getName(),"Click to invite");
+            ItemStack head=icon(de.minenight.allinone.GuiPlayerIcons.material(p),"§b"+other.getName(),"§aAvailable"," ","Click to send an invitation");
             de.minenight.allinone.GuiPlayerIcons.applyProfile(head,other);
-            put(menu,i-index*21,head,()->invite(p,other));
+            put(menu,i-index*18,head,()->invite(p,other));
         }
-        if(index>0)put(menu,21,icon(Material.ARROW,"Previous"),()->openOpponents(p,index-1));
-        if(index<last)put(menu,26,icon(Material.ARROW,"Next"),()->openOpponents(p,index+1));
-        p.openInventory(menu.inventory);
+        if(players.isEmpty())menu.inventory.setItem(4,icon(Material.CLOCK,"No opponents available","Try again when another player is online."));
+        menu.inventory.setItem(22,icon(Material.COMPASS,"§bSelect Opponent","Page "+(index+1)+" / "+(last+1),players.size()+" available player(s)"));
+        if(index>0)put(menu,18,icon(Material.ARROW,"Previous page"),()->openOpponents(p,index-1));
+        if(index<last)put(menu,26,icon(Material.ARROW,"Next page"),()->openOpponents(p,index+1));
+        display(p,menu);
     }
     private void invite(Player a,Player b) {
         if(!available(a)||!available(b)||!a.canSee(b)){say(a,"Player is unavailable.");return;}
@@ -352,73 +382,162 @@ public final class TierTestModule extends MineNightModule implements Listener {
         say(b,"You can also use /tiertest accept or /tiertest decline.");
         Bukkit.getScheduler().runTaskLater(core(),()->{if(invites.remove(to,invite)){Player p=Bukkit.getPlayer(from);if(p!=null)say(p,msg("invite-expired","Invitation expired."));}},20L*setting("invitation-seconds",60,5,300));
     }
-    private void openBoth(Match m){for(UUID id:m.ids()){Player p=Bukkit.getPlayer(id);if(p!=null)openStage(p,m);}}
+    private void openBoth(Match m){
+        for(UUID id:m.ids()){
+            Player p=Bukkit.getPlayer(id);
+            if(p==null)continue;
+            Resume resume=suspendedMenus.get(id);
+            if(resume!=null&&resume.match()==m)continue;
+            openStage(p,m);
+        }
+    }
+    private void updateChoices(Player p,Match m){
+        openStage(p,m);
+        Player other=Bukkit.getPlayer(m.other(p.getUniqueId()));
+        if(other!=null&&other.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu&&menu.stage==m.stage&&menu.resume==null)openStage(other,m);
+    }
+    private String stepTitle(Stage stage){return switch(stage){case TYPE->"Test Type";case KIT->"Your Kit";case BIOME->"Select Biome";case READY->"Ready";default->"Waiting";};}
+    private int stepNumber(Stage stage){return switch(stage){case TYPE->1;case KIT->2;case BIOME->3;case READY->4;default->0;};}
+    private String choice(boolean chosen){return chosen?"§a✔ Selected":"§7Click to select";}
+    private void stageFooter(Menu menu,Player p,Match m){
+        footer(menu,18,26);
+        int current=stepNumber(m.stage);
+        String[] steps={"Test Type","Your Kit","Biome","Ready"};
+        for(int i=0;i<4;i++){
+            int number=i+1;
+            Material material=number<current?Material.LIME_STAINED_GLASS_PANE:number==current?Material.LIGHT_BLUE_STAINED_GLASS_PANE:Material.GRAY_STAINED_GLASS_PANE;
+            menu.inventory.setItem(18+i,icon(material,(number<current?"§a":number==current?"§b":"§7")+number+". "+steps[i]));
+        }
+        menu.inventory.setItem(23,icon(Material.CLOCK,"§bStep "+current+" / 4","Opponent: "+name(m.other(p.getUniqueId())),"Close to change settings; move to resume."));
+        put(menu,26,icon(Material.BARRIER,"§cCancel Tier Test","End this setup for both players."),()->finish(m,null,"Tier test cancelled."));
+    }
+    private String status(Object value){return value==null?"§7Waiting...":"§a"+value;}
     private void openStage(Player p,Match m){
         if(!current(m)||m.backedUp)return;
-        UUID id=p.getUniqueId();
-        Menu menu=menu(p,27,switch(m.stage){case TYPE->"Select Test Type";case KIT->"Select Kit";case BIOME->"Select Biome";case READY->"Ready";default->"Waiting";});
+        UUID id=p.getUniqueId(),other=m.other(id);
+        Menu menu=menu(p,27,stepTitle(m.stage));menu.stage=m.stage;
         switch(m.stage){
             case TYPE->{
+                for(int i=0;i<18;i++)if(i!=11&&i!=15&&i!=4&&i!=13)decoration(menu,i,Material.BLACK_STAINED_GLASS_PANE);
+                menu.inventory.setItem(4,icon(Material.NETHER_STAR,"§bChoose your test","Both players must select the same type."));
                 for(TierKitRules.Type type:TierKitRules.Type.values()){
-                    int slot=type==TierKitRules.Type.BELOW?11:15;
-                    put(menu,slot,icon(configuredIcon(type.key()+"-icon",type==TierKitRules.Type.BELOW?Material.IRON_SWORD:Material.DIAMOND_SWORD),typeName(type),"First to "+wins(type),Objects.equals(m.types.get(id),type)?"Selected":"Click to select"),()->{
-                        if(m.stage!=Stage.TYPE)return;m.types.put(id,type);
-                        if(m.types.get(m.a)==type&&m.types.get(m.b)==type){m.type=type;m.stage=Stage.KIT;openBoth(m);}else{tell(m,name(id)+" selected "+typeName(type)+".");openStage(p,m);}
+                    boolean below=type==TierKitRules.Type.BELOW,chosen=Objects.equals(m.types.get(id),type);
+                    String path="rules."+type.key()+".";
+                    int totems=getConfig().getInt(path+"limits.TOTEM_OF_UNDYING",below?14:8);
+                    int rockets=getConfig().getInt(path+"limits.FIREWORK_ROCKET",getConfig().getInt("rules.limits.FIREWORK_ROCKET",24));
+                    int slot=below?11:15;
+                    ItemStack item=selected(icon(configuredIcon(type.key()+"-icon",below?Material.DIAMOND_SWORD:Material.NETHERITE_SWORD),
+                            (below?"§b§l":"§d§l")+typeName(type),"§fFirst to "+wins(type)+" wins"," ",
+                            "§7Totems: §f"+totems,"§7Rockets: §f"+rockets,
+                            below?"§cShulkers & Ender Chests disabled":"§aShulkers & Ender Chests allowed",
+                            getConfig().getBoolean(path+"allow-weakness-arrows",!below)?"§aWeakness arrows allowed":"§cWeakness arrows disabled"," ",choice(chosen)),chosen);
+                    put(menu,slot,item,()->{
+                        if(!current(m)||m.stage!=Stage.TYPE)return;
+                        m.types.put(id,type);
+                        if(m.types.get(m.a)==type&&m.types.get(m.b)==type){m.type=type;m.stage=Stage.KIT;openBoth(m);}
+                        else{tell(m,name(id)+" selected "+typeName(type)+".");updateChoices(p,m);}
                     });
                 }
+                TierKitRules.Type own=m.types.get(id),opponent=m.types.get(other);
+                menu.inventory.setItem(13,icon(Material.PAPER,"§bSelections","You: "+status(own==null?null:typeName(own)),"Opponent: "+status(opponent==null?null:typeName(opponent))));
             }
             case KIT->{
                 KitModule kits=(KitModule)core().module("kits");
                 for(int n=1;n<=9;n++){
-                    int number=n;var saved=kits.snapshotForTierTest(id,n);
-                    if(saved.isPresent())put(menu,n-1,icon(Material.CHEST,"Kit "+n,"Click to preview"),()->preview(p,m,saved.get(),"Kit "+number));
-                    else menu.inventory.setItem(n-1,icon(Material.GRAY_DYE,"Kit "+n+" (empty)"));
+                    int number=n;var saved=kits.snapshotForTierTest(id,n);boolean chosen=("Kit "+n).equals(m.kitNames.get(id));
+                    if(saved.isPresent())put(menu,n-1,selected(icon(Material.CHEST,"§bKit "+n,chosen?"§a✔ Selected":"§7Saved personal kit","Click to preview and validate"),chosen),()->preview(p,m,saved.get(),"Kit "+number));
+                    else menu.inventory.setItem(n-1,icon(Material.GRAY_DYE,"§7Kit "+n,"Not saved yet"));
                 }
-                if(premades.contains(m.type.key()+".storage"))put(menu,13,icon(configuredIcon("premade-icon",Material.ENDER_CHEST),typeName(m.type)+" Premade"),()->preview(p,m,readKit(premades,m.type.key()),"Premade"));
-                else menu.inventory.setItem(13,icon(Material.BARRIER,"Premade kit unavailable"));
-                if(m.kits.containsKey(id))menu.inventory.setItem(22,icon(Material.LIME_DYE,"Selected: "+m.kitNames.get(id)));
+                if(premades.contains(m.type.key()+".storage"))put(menu,13,selected(icon(configuredIcon("premade-icon",Material.ENDER_CHEST),"§b§l"+typeName(m.type)+" Premade","Official ready-to-use kit","Click to preview"),"Premade".equals(m.kitNames.get(id))),()->preview(p,m,readKit(premades,m.type.key()),"Premade"));
+                else menu.inventory.setItem(13,icon(Material.BARRIER,"§cPremade kit unavailable","Staff have not saved this kit yet."));
+                menu.inventory.setItem(16,icon(Material.PAPER,"§bKit Status","You: "+status(m.kitNames.get(id)),"Opponent: "+status(m.kits.containsKey(other)?"Ready":null),"Saved kits are never changed."));
             }
             case BIOME->{
+                menu.inventory.setItem(4,icon(Material.COMPASS,"§bChoose an arena","Both players must agree on the biome."));
                 for(int i=0;i<BIOMES.size();i++){
-                    String biome=BIOMES.get(i);put(menu,10+i,icon(ICONS.get(i),biomeName(biome),Objects.equals(m.biomes.get(id),biome)?"Selected":"Click to select"),()->{
-                        if(m.stage!=Stage.BIOME)return;m.biomes.put(id,biome);
-                        if(biome.equals(m.biomes.get(m.a))&&biome.equals(m.biomes.get(m.b))){m.biome=biome;m.stage=Stage.READY;openBoth(m);}else{tell(m,name(id)+" selected "+biomeName(biome)+".");openStage(p,m);}
+                    String biome=BIOMES.get(i);boolean chosen=Objects.equals(m.biomes.get(id),biome);
+                    put(menu,11+i,selected(icon(ICONS.get(i),"§b"+biomeName(biome),"Random location in this world","Spawn distance: "+setting("spawn-distance",15,1,64)+" blocks"," ",choice(chosen)),chosen),()->{
+                        if(!current(m)||m.stage!=Stage.BIOME)return;m.biomes.put(id,biome);
+                        if(biome.equals(m.biomes.get(m.a))&&biome.equals(m.biomes.get(m.b))){m.biome=biome;m.stage=Stage.READY;openBoth(m);}
+                        else{tell(m,name(id)+" selected "+biomeName(biome)+".");updateChoices(p,m);}
                     });
                 }
+                String own=m.biomes.get(id),opponent=m.biomes.get(other);
+                menu.inventory.setItem(17,icon(Material.PAPER,"§bSelections","You: "+status(own==null?null:biomeName(own)),"Opponent: "+status(opponent==null?null:biomeName(opponent))));
             }
             case READY->{
-                menu.inventory.setItem(11,icon(Material.PAPER,"Tier Test","Opponent: "+name(m.other(id)),typeName(m.type),"Your kit: "+m.kitNames.get(id),"Biome: "+biomeName(m.biome),"First to "+wins(m.type)));
-                put(menu,15,icon(Material.LIME_DYE,m.ready.contains(id)?"Ready":"Confirm Ready"),()->{
-                    if(m.stage!=Stage.READY)return;m.ready.add(id);
-                    if(m.ready.size()==2)beginMatch(m);else{tell(m,name(id)+" is ready.");openStage(p,m);}
+                menu.inventory.setItem(4,icon(Material.NETHER_STAR,"§b§lMatch Summary",typeName(m.type),"First to "+wins(m.type)+" wins"));
+                Player rival=Bukkit.getPlayer(other);
+                ItemStack head=icon(de.minenight.allinone.GuiPlayerIcons.material(p),"§b"+name(other),m.ready.contains(other)?"§a✔ Ready":"§7Waiting for confirmation");
+                if(rival!=null)de.minenight.allinone.GuiPlayerIcons.applyProfile(head,rival);
+                menu.inventory.setItem(10,head);
+                menu.inventory.setItem(12,icon(Material.CHEST,"§bYour Kit",m.kitNames.get(id),"Validated and ready"));
+                menu.inventory.setItem(14,icon(ICONS.get(BIOMES.indexOf(m.biome)),"§b"+biomeName(m.biome),"Spawn distance: "+setting("spawn-distance",15,1,64)+" blocks"));
+                boolean ready=m.ready.contains(id);
+                put(menu,16,selected(icon(ready?Material.LIME_STAINED_GLASS_PANE:Material.EMERALD,ready?"§a§l✔ READY":"§a§lCONFIRM READY"," ",ready?"Waiting for your opponent":"Click to start when both are ready"),ready),()->{
+                    if(!current(m)||m.stage!=Stage.READY)return;m.ready.add(id);
+                    if(m.ready.size()==2)beginMatch(m);else{tell(m,name(id)+" is ready.");updateChoices(p,m);}
                 });
             }
             default->{return;}
         }
-        put(menu,26,icon(Material.BARRIER,"Cancel Tier Test"),()->finish(m,null,"Tier test cancelled."));
-        p.openInventory(menu.inventory);
+        stageFooter(menu,p,m);display(p,menu);
     }
     private void preview(Player p,Match m,TierKitSnapshot raw,String kitName){
         if(!current(m)||m.stage!=Stage.KIT)return;
         TierKitRules.Result checked=rules(m.type).sanitize(raw);
-        Menu menu=menu(p,54,"Kit Preview");
+        Menu menu=menu(p,54,"Preview · "+kitName);menu.stage=Stage.KIT;menu.resume=()->preview(p,m,raw,kitName);
         TierKitSnapshot kit=checked.kit();ItemStack[] storage=kit.storage(),armor=kit.armor();
         for(int i=0;i<storage.length;i++)menu.inventory.setItem(i,storage[i]);
         for(int i=0;i<4;i++)menu.inventory.setItem(36+i,armor[i]);
-        menu.inventory.setItem(40,kit.offhand());
-        put(menu,45,icon(Material.ARROW,"Back"),()->openStage(p,m));
-        put(menu,47,icon(Material.ENDER_CHEST,"Preview Ender Chest"),()->{
-            Menu ender=menu(p,36,"Ender Chest Preview");ItemStack[] contents=kit.ender();
-            for(int i=0;i<contents.length;i++)ender.inventory.setItem(i,contents[i]);
-            put(ender,31,icon(Material.ARROW,"Back"),()->preview(p,m,raw,kitName));p.openInventory(ender.inventory);
-        });
-        put(menu,49,icon(Material.LIME_DYE,"Select "+kitName,checked.changes().size()+" correction(s)"),()->{
+        menu.inventory.setItem(40,kit.offhand());footer(menu,45,53);
+        put(menu,45,icon(Material.ARROW,"§bBack to kits"),()->openStage(p,m));
+        put(menu,47,icon(Material.ENDER_CHEST,"§bEnder Chest","Preview the validated contents"),()->previewEnder(p,m,raw,kitName,kit));
+        menu.inventory.setItem(51,icon(checked.changes().isEmpty()?Material.LIME_DYE:Material.PAPER,checked.changes().isEmpty()?"§a✔ Kit passed":"§eKit corrected",checked.changes().size()+" correction(s)","Original kit remains unchanged."));
+        put(menu,49,icon(Material.EMERALD,"§a§lSELECT "+kitName.toUpperCase(Locale.ROOT),"Use this validated kit"),()->{
             if(!current(m)||m.stage!=Stage.KIT)return;
             UUID id=p.getUniqueId();m.kits.put(id,kit);m.kitNames.put(id,kitName);report(p,checked);
-            if(m.kits.size()==2){m.stage=Stage.BIOME;openBoth(m);}else openStage(p,m);
+            if(m.kits.size()==2){m.stage=Stage.BIOME;openBoth(m);}else updateChoices(p,m);
         });
-        p.openInventory(menu.inventory);
+        display(p,menu);
     }
+    private void previewEnder(Player p,Match m,TierKitSnapshot raw,String kitName,TierKitSnapshot kit){
+        if(!current(m)||m.stage!=Stage.KIT)return;
+        Menu ender=menu(p,36,"Ender Chest");ender.stage=Stage.KIT;ender.resume=()->previewEnder(p,m,raw,kitName,kit);
+        ItemStack[] contents=kit.ender();
+        for(int i=0;i<contents.length;i++)ender.inventory.setItem(i,contents[i]);
+        footer(ender,27,35);
+        put(ender,31,icon(Material.ARROW,"§bBack to kit preview"),()->preview(p,m,raw,kitName));display(p,ender);
+    }
+    private void resumeNow(Player p,Match m){
+        if(!current(m)||m.backedUp)return;
+        Resume saved=suspendedMenus.remove(p.getUniqueId());
+        if(saved!=null&&saved.match()==m&&saved.stage()==m.stage&&saved.action()!=null)saved.action().run();
+        else openStage(p,m);
+    }
+    @EventHandler(priority=EventPriority.MONITOR) public void closeSetup(InventoryCloseEvent event){
+        if(!(event.getPlayer() instanceof Player p)||!(event.getInventory().getHolder() instanceof Menu menu))return;
+        UUID id=p.getUniqueId();Match m=matches.get(id);
+        if(openingMenus.contains(id)||m==null||!current(m)||m.backedUp||menu.stage==null)return;
+        suspendedMenus.put(id,new Resume(m,menu.stage,menu.resume,System.currentTimeMillis()+750));
+        p.sendActionBar(Component.text("Tier test paused · Move or click to continue",LIGHT));
+        p.sendMessage(Component.text("[Continue Tier Test]",LIGHT).clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/tiertest")));
+    }
+    private boolean scheduleResume(Player p){
+        UUID id=p.getUniqueId();Resume saved=suspendedMenus.get(id);
+        if(saved==null||saved.after()>System.currentTimeMillis()||!current(saved.match())||saved.match().backedUp)return false;
+        if(p.getOpenInventory().getTopInventory().getType()!=InventoryType.CRAFTING)return false;
+        if(pendingReopen.add(id))Bukkit.getScheduler().runTask(core(),()->{
+            pendingReopen.remove(id);
+            if(p.isOnline()&&suspendedMenus.get(id)==saved&&p.getOpenInventory().getTopInventory().getType()==InventoryType.CRAFTING)resumeNow(p,saved.match());
+        });
+        return true;
+    }
+    @EventHandler public void resumeInput(PlayerInputEvent event){
+        var input=event.getInput();
+        if(input.isForward()||input.isBackward()||input.isLeft()||input.isRight()||input.isJump()||input.isSneak())scheduleResume(event.getPlayer());
+    }
+    @EventHandler public void resumeSwing(PlayerAnimationEvent event){scheduleResume(event.getPlayer());}
     private void report(Player p,TierKitRules.Result result){
         if(result.changes().isEmpty()){say(p,"§aKit passed all configured checks.");return;}
         say(p,"§eKit corrections: "+result.changes().size()+" (saved kit unchanged).");
@@ -461,6 +580,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
 
     private void beginMatch(Match m){
         if(!current(m)||m.backedUp)return;
+        for(UUID id:m.ids())suspendedMenus.remove(id);
         String step="validate players";
         try{
             for(UUID id:m.ids()){
@@ -650,7 +770,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         m.stage=Stage.END;++m.epoch;clearContainers(m);
         String score=m.score==null?"":m.score.score().first()+" - "+m.score.score().second();
         for(UUID id:m.ids()){
-            matches.remove(id,m);Player p=Bukkit.getPlayer(id);
+            matches.remove(id,m);suspendedMenus.remove(id);pendingReopen.remove(id);Player p=Bukkit.getPlayer(id);
             if(p==null)continue;
             p.closeInventory();
             if(reason!=null)say(p,reason);
@@ -686,7 +806,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         stopping=true;
         for(Match m:new HashSet<>(matches.values()))finish(m,null,"Tier test stopped.");
         for(Player p:Bukkit.getOnlinePlayers())if(recovery.contains(p.getUniqueId())&&!p.isDead())recover(p);
-        invites.clear();matches.clear();originalBoards.clear();
+        invites.clear();matches.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
     }
 
     private boolean frozen(Player p){Match m=matches.get(p.getUniqueId());return (m!=null&&m.backedUp&&m.stage!=Stage.ACTIVE)||(m==null&&recovery.contains(p.getUniqueId()));}
@@ -748,6 +868,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void interact(PlayerInteractEvent event){
         Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());Block block=event.getClickedBlock();
+        if(scheduleResume(p)){event.setCancelled(true);return;}
         if(frozen(p)){event.setCancelled(true);return;}
         if(block!=null){
             Match region=area(block.getLocation());

@@ -48,8 +48,8 @@ messages:
   match-aborted: 'Tier test cancelled. Your original inventory will be restored.'
 gui:
   title: '§9Tier Test'
-  below-icon: IRON_SWORD
-  above-icon: DIAMOND_SWORD
+  below-icon: DIAMOND_SWORD
+  above-icon: NETHERITE_SWORD
   premade-icon: ENDER_CHEST
 sounds:
   winner: UI_TOAST_CHALLENGE_COMPLETE
