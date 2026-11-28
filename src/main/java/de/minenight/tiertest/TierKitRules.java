@@ -177,7 +177,17 @@ public final class TierKitRules {
         if (storageItem(material) && (type == Type.BELOW || (!shulker && material != Material.ENDER_CHEST)))
             return remove(item, budget, location, "storage not allowed");
         ItemMeta meta = item.getItemMeta();
+        if (!validComponents(item, shulker))
+            return remove(item, budget, location, "non-vanilla data component");
         if (meta != null) {
+            if (meta instanceof org.bukkit.inventory.meta.FireworkMeta firework && (firework.getPower() < 1 || firework.getPower() > 3))
+                return remove(item, budget, location, "invalid firework flight duration");
+            if (meta instanceof org.bukkit.inventory.meta.CrossbowMeta crossbow && crossbow.hasChargedProjectiles()) {
+                crossbow.setChargedProjectiles(List.of());
+                item.setItemMeta(crossbow);
+                meta = item.getItemMeta();
+                budget.changes.add(location + ": cleared loaded crossbow projectiles");
+            }
             if (meta.isUnbreakable() || meta.hasAttributeModifiers() || !meta.getPersistentDataContainer().isEmpty())
                 return remove(item, budget, location, "non-vanilla metadata");
             if (item.getMaxStackSize() != material.getMaxStackSize())
@@ -202,14 +212,40 @@ public final class TierKitRules {
             if (!(meta instanceof BlockStateMeta blockMeta) || !(blockMeta.getBlockState() instanceof ShulkerBox box))
                 return remove(item, budget, location, "invalid shulker metadata");
             ItemStack[] contents = cleanArray(box.getSnapshotInventory().getContents(), budget, true, location + "/shulker");
-            box.getSnapshotInventory().setContents(contents);
-            blockMeta.setBlockState(box);
-            item.setItemMeta(blockMeta);
+            ItemStack fresh = new ItemStack(material);
+            BlockStateMeta freshMeta = (BlockStateMeta) fresh.getItemMeta();
+            ShulkerBox freshBox = (ShulkerBox) freshMeta.getBlockState();
+            freshBox.getSnapshotInventory().setContents(contents);
+            freshMeta.setBlockState(freshBox);
+            if (blockMeta.hasDisplayName()) freshMeta.displayName(blockMeta.displayName());
+            fresh.setItemMeta(freshMeta);
+            item = fresh;
         }
         item.setAmount(amount);
         budget.consume(material, amount);
         if (amount != original) budget.changes.add(location + ": " + material + " reduced from " + original + " to " + amount);
         return item;
+    }
+
+    private static boolean validComponents(ItemStack item, boolean shulker) {
+        Set<io.papermc.paper.datacomponent.DataComponentType> excluded = new HashSet<>();
+        ItemStack baseline = new ItemStack(item.getType());
+        Set<io.papermc.paper.datacomponent.DataComponentType> components = new HashSet<>(baseline.getDataTypes());
+        components.addAll(item.getDataTypes());
+        Set<String> cosmetic = Set.of("custom_name", "repair_cost", "damage", "enchantments", "stored_enchantments",
+                "dyed_color", "trim", "banner_patterns", "base_color");
+        for (var component : components) {
+            if (!component.getKey().getNamespace().equals("minecraft")) continue;
+            String key = component.getKey().getKey();
+            boolean allowed = cosmetic.contains(key)
+                    || (key.equals("potion_contents") && item.getItemMeta() instanceof PotionMeta)
+                    || (key.equals("fireworks") && item.getType() == Material.FIREWORK_ROCKET)
+                    || (key.equals("firework_explosion") && item.getType() == Material.FIREWORK_STAR)
+                    || (key.equals("charged_projectiles") && item.getType() == Material.CROSSBOW)
+                    || (shulker && (key.equals("container") || key.equals("block_entity_data")));
+            if (allowed) excluded.add(component);
+        }
+        return item.matchesWithoutData(baseline, excluded, true);
     }
 
     public boolean allowsShulkerItem(ItemStack item) {

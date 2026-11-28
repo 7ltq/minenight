@@ -40,7 +40,6 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private final Set<UUID> internalTeleport = new HashSet<>();
     private final Set<UUID> recovery = new HashSet<>();
     private final Set<UUID> restoring = new HashSet<>();
-    private final Map<Location, UUID> droppedContainers = new HashMap<>();
     private File backups;
     private File premadeFile;
     private YamlConfiguration premades;
@@ -79,9 +78,18 @@ public final class TierTestModule extends MineNightModule implements Listener {
         final Inventory inventory;
         Menu(UUID owner, int size, String title) {
             this.owner = owner;
-            inventory = Bukkit.createInventory(this, size, Component.text(title));
+            inventory = size == 27 ? Bukkit.createInventory(this, InventoryType.BARREL, legacy(title)) : Bukkit.createInventory(this, size, legacy(title));
         }
         @Override public Inventory getInventory() { return inventory; }
+    }
+
+    private static Component legacy(String value) { return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(value); }
+
+    public static boolean protectedInventory(Player player) {
+        MineNightAllInOne plugin = MineNightAllInOne.instance();
+        if (plugin == null || !(plugin.module("tiertest") instanceof TierTestModule module)) return false;
+        Match match = module.matches.get(player.getUniqueId());
+        return module.recovery.contains(player.getUniqueId()) || module.restoring.contains(player.getUniqueId()) || (match != null && match.backedUp);
     }
 
     public static boolean locked(Player player) {
@@ -234,7 +242,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
         }
         if(args.length>0 && args[0].equalsIgnoreCase("check")) {
             if(locked(p)) { say(p,msg("blocked","That action is unavailable."));return true; }
-            if(args.length<2 || args.length>3 || !(args[1].equalsIgnoreCase("below") || args[1].equalsIgnoreCase("above"))) { say(p,"Usage: /tiertest check <below|above> [1-9]");return true; }
+            if(args.length==1) {
+                say(p,"Below HT3:");report(p,rules(TierKitRules.Type.BELOW).sanitize(capture(p)));
+                say(p,"Above HT3:");report(p,rules(TierKitRules.Type.ABOVE).sanitize(capture(p)));return true;
+            }
+            if(args.length>3 || !(args[1].equalsIgnoreCase("below") || args[1].equalsIgnoreCase("above"))) { say(p,"Usage: /tiertest check <below|above> [1-9]");return true; }
             TierKitRules.Type type=args[1].equalsIgnoreCase("below")?TierKitRules.Type.BELOW:TierKitRules.Type.ABOVE;
             TierKitSnapshot kit=capture(p);
             if(args.length==3) {
@@ -285,8 +297,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
 
     private ItemStack icon(Material material,String title,String... lore) {
         ItemStack item=new ItemStack(material);ItemMeta meta=item.getItemMeta();
-        meta.displayName(Component.text(title));
-        meta.lore(Arrays.stream(lore).map(Component::text).map(c->(Component)c).toList());
+        meta.displayName(legacy(title));
+        meta.lore(Arrays.stream(lore).map(TierTestModule::legacy).toList());
         item.setItemMeta(meta);return item;
     }
     private Material configuredIcon(String key,Material fallback) {
@@ -402,6 +414,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(m==null||!m.backedUp){if(recovery.contains(p.getUniqueId()))event.setCancelled(true);return;}
         if(m.stage!=Stage.ACTIVE){event.setCancelled(true);return;}
         Inventory top=event.getView().getTopInventory();
+        if(event.getClick()==ClickType.DROP||event.getClick()==ClickType.CONTROL_DROP||event.getRawSlot()==-999){event.setCancelled(true);return;}
         if(top.getType()==InventoryType.CRAFTING){
             if(event.getRawSlot()>=0&&event.getRawSlot()<top.getSize())event.setCancelled(true);
         }else if(top.getType()==InventoryType.ENDER_CHEST&&m.type==TierKitRules.Type.ABOVE){
@@ -448,12 +461,12 @@ public final class TierTestModule extends MineNightModule implements Listener {
         Scoreboard previous=originalBoards.getOrDefault(p.getUniqueId(),p.getScoreboard());
         Scoreboard board=Bukkit.getScoreboardManager().getNewScoreboard();
         for(Team old:previous.getTeams()){
-            Team team=board.registerNewTeam(old.getName());team.prefix(old.prefix());team.suffix(old.suffix());team.color(old.color());
+            Team team=board.registerNewTeam(old.getName());team.prefix(old.prefix());team.suffix(old.suffix());if(old.color()!=null)team.color(net.kyori.adventure.text.format.NamedTextColor.nearestTo(old.color()));
             team.setAllowFriendlyFire(old.allowFriendlyFire());team.setCanSeeFriendlyInvisibles(old.canSeeFriendlyInvisibles());
             for(Team.Option option:Team.Option.values())team.setOption(option,old.getOption(option));
             for(String entry:old.getEntries())team.addEntry(entry);
         }
-        Objective objective=board.registerNewObjective("mn_tiertest",Criteria.DUMMY,Component.text("§9§lMineNight"));
+        Objective objective=board.registerNewObjective("mn_tiertest",Criteria.DUMMY,legacy("§9§lMineNight"));
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);m.boards.put(p.getUniqueId(),objective);p.setScoreboard(board);updateBoard(m);
     }
     private void updateBoard(Match m){
@@ -468,7 +481,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     private int radius(){return setting("arena-radius",150,32,512);}
     private boolean inside(Match m,Location l){return m.center!=null&&Objects.equals(m.center.getWorld(),l.getWorld())&&Math.abs(l.getX()-m.center.getX())<=radius()&&Math.abs(l.getZ()-m.center.getZ())<=radius();}
-    private Match area(Location l){for(Match m:new HashSet<>(matches.values()))if(m.playing()&&inside(m,l))return m;return null;}
+    private Match area(Location l){for(Match m:matches.values())if(m.playing()&&inside(m,l))return m;return null;}
     private boolean free(Match m,MineNightRTP.TierPair pair){
         Location center=pair.first().clone().add(pair.second().toVector().subtract(pair.first().toVector()).multiply(.5));
         for(Match other:new HashSet<>(matches.values()))if(other!=m&&other.center!=null&&Objects.equals(other.center.getWorld(),center.getWorld())&&Math.abs(other.center.getX()-center.getX())<=radius()*2+32&&Math.abs(other.center.getZ()-center.getZ())<=radius()*2+32)return false;
@@ -635,12 +648,19 @@ public final class TierTestModule extends MineNightModule implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void move(PlayerMoveEvent event){
         if(event instanceof PlayerTeleportEvent||event.getTo()==null||!event.hasChangedPosition())return;
         Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());
-        if(frozen(p)||(m!=null&&m.playing()&&!inside(m,event.getTo()))||(m==null&&area(event.getTo())!=null)){
+        if(frozen(p)||(m!=null&&m.playing()&&!inside(m,event.getTo()))||((m==null||!m.playing())&&area(event.getTo())!=null)){
             Location from=event.getFrom().clone();from.setYaw(event.getTo().getYaw());from.setPitch(event.getTo().getPitch());event.setTo(from);
         }
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void damage(EntityDamageEvent event){
-        if(event.getEntity() instanceof Player p&&frozen(p))event.setCancelled(true);
+        if(!(event.getEntity() instanceof Player p))return;
+        if(frozen(p)){event.setCancelled(true);return;}
+        Match target=matches.get(p.getUniqueId());
+        Entity causing=event.getDamageSource().getCausingEntity();
+        if(causing instanceof Player source){
+            Match attacker=matches.get(source.getUniqueId());
+            if(attacker!=target&&((attacker!=null&&attacker.playing())||(target!=null&&target.playing())))event.setCancelled(true);
+        }
     }
     private Player actor(Entity entity){
         if(entity instanceof Player p)return p;
@@ -670,7 +690,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         if(frozen(p)){event.setCancelled(true);return;}
         if(block!=null){
             Match region=area(block.getLocation());
-            if(region!=null&&region!=m){event.setCancelled(true);return;}
+            if(region!=null&&(region!=m||!m.playing())){event.setCancelled(true);return;}
             if(m!=null&&m.playing()&&block.getState() instanceof org.bukkit.block.Container&&!(block.getState() instanceof ShulkerBox&&p.getUniqueId().equals(m.containers.get(block.getLocation())))){event.setCancelled(true);return;}
             if(m!=null&&m.playing()&&block.getType()==Material.ENDER_CHEST&&(m.type!=TierKitRules.Type.ABOVE||!m.containers.containsKey(block.getLocation())))event.setCancelled(true);
         }
@@ -686,7 +706,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void place(BlockPlaceEvent event){
         Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());Match region=area(event.getBlockPlaced().getLocation());
-        if(frozen(p)||(region!=null&&region!=m)){event.setCancelled(true);return;}
+        if(frozen(p)||(region!=null&&(region!=m||!m.playing()))){event.setCancelled(true);return;}
         if(m==null||!m.playing())return;
         if(m.stage!=Stage.ACTIVE||region!=m){event.setCancelled(true);return;}
         Block block=event.getBlockPlaced();boolean shulker=block.getState() instanceof ShulkerBox;
@@ -700,7 +720,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void breakBlock(BlockBreakEvent event){
         Player p=event.getPlayer();Match m=matches.get(p.getUniqueId());Block block=event.getBlock();Match region=area(block.getLocation());
-        if(frozen(p)||(region!=null&&region!=m)){event.setCancelled(true);return;}
+        if(frozen(p)||(region!=null&&(region!=m||!m.playing()))){event.setCancelled(true);return;}
         if(m==null||!m.playing())return;
         if(m.stage!=Stage.ACTIVE||region!=m){event.setCancelled(true);return;}
         if(m.containers.containsKey(block.getLocation())){
@@ -722,6 +742,14 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void protectExplosion(Location source,List<Block> blocks){
         Match origin=area(source);
         blocks.removeIf(block->{Match region=area(block.getLocation());return region!=null&&(region!=origin||region.containers.containsKey(block.getLocation())||block.getState() instanceof org.bukkit.block.Container);});
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void lingering(AreaEffectCloudApplyEvent event){
+        Match source=event.getEntity().getSource() instanceof Player p?matches.get(p.getUniqueId()):null;
+        event.getAffectedEntities().removeIf(entity->{
+            if(!(entity instanceof Player p))return false;
+            Match target=matches.get(p.getUniqueId());
+            return frozen(p)||(source!=target&&((source!=null&&source.playing())||(target!=null&&target.playing())));
+        });
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void splash(PotionSplashEvent event){
         Player source=actor(event.getPotion());Match a=source==null?null:matches.get(source.getUniqueId());

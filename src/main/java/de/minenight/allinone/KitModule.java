@@ -112,7 +112,7 @@ public final class KitModule extends MineNightModule implements Listener {
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(player)) return;
         if (getConfig().getBoolean("death.compact-drops", true) && !event.getKeepInventory() && !event.getDrops().isEmpty()) {
             Location location = player.getLocation().clone();
             World world = location.getWorld();
@@ -162,7 +162,7 @@ public final class KitModule extends MineNightModule implements Listener {
 
     @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
-        if (de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) return;
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(event.getPlayer())) return;
         if (!getConfig().getBoolean("death.auto-equip-kit-1", true)) return;
         UUID playerId = event.getPlayer().getUniqueId();
         Bukkit.getScheduler().runTaskLater(core(), () -> {

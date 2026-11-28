@@ -165,7 +165,7 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
         }, 5L);
     }
     @EventHandler(priority=EventPriority.HIGH) public void onRespawn(PlayerRespawnEvent event) {
-        if (de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) return;
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(event.getPlayer())) return;
         if (!getConfig().getBoolean("settings.override-respawn-location",true)) return;
         Location location = spawn();
         if (location != null) event.setRespawnLocation(location);
