@@ -140,7 +140,7 @@ public final class TierKitRules {
     private static boolean isArmor(Material material) {
         String name = material.name();
         return name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
-                || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS") || material == Material.ELYTRA;
+                || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS");
     }
 
     private static boolean storageItem(Material material) {
@@ -176,32 +176,32 @@ public final class TierKitRules {
             return remove(item, budget, location, "not allowed inside shulker");
         if (storageItem(material) && (type == Type.BELOW || (!shulker && material != Material.ENDER_CHEST)))
             return remove(item, budget, location, "storage not allowed");
+        normalizeComponents(item, shulker, budget, location);
         ItemMeta meta = item.getItemMeta();
-        if (!validComponents(item, shulker))
-            return remove(item, budget, location, "non-vanilla data component");
         if (meta != null) {
-            if (meta instanceof org.bukkit.inventory.meta.FireworkMeta firework && (firework.getPower() < 1 || firework.getPower() > 3))
-                return remove(item, budget, location, "invalid firework flight duration");
+            if (meta instanceof org.bukkit.inventory.meta.FireworkMeta firework && (firework.getPower() < 1 || firework.getPower() > 3)) {
+                firework.setPower(Math.max(1, Math.min(3, firework.getPower())));
+                item.setItemMeta(firework);
+                meta = item.getItemMeta();
+                budget.changes.add(location + ": corrected firework duration");
+            }
             if (meta instanceof org.bukkit.inventory.meta.CrossbowMeta crossbow && crossbow.hasChargedProjectiles()) {
                 crossbow.setChargedProjectiles(List.of());
                 item.setItemMeta(crossbow);
                 meta = item.getItemMeta();
                 budget.changes.add(location + ": cleared loaded crossbow projectiles");
             }
-            if (meta.isUnbreakable() || meta.hasAttributeModifiers() || !meta.getPersistentDataContainer().isEmpty())
-                return remove(item, budget, location, "non-vanilla metadata");
-            if (item.getMaxStackSize() != material.getMaxStackSize())
-                return remove(item, budget, location, "custom stack size");
             if (meta instanceof Damageable damage && (damage.getDamage() < 0 ||
-                    (material.getMaxDurability() > 0 && damage.getDamage() >= material.getMaxDurability())))
-                return remove(item, budget, location, "invalid durability");
-            if (!validEnchantments(item, item.getEnchantments(), true))
-                return remove(item, budget, location, "invalid enchantments");
-            if (meta instanceof EnchantmentStorageMeta book && !validEnchantments(item, book.getStoredEnchants(), false))
-                return remove(item, budget, location, "invalid stored enchantments");
+                    (material.getMaxDurability() > 0 && damage.getDamage() >= material.getMaxDurability()))) {
+                damage.setDamage(Math.max(0, material.getMaxDurability() - 1));
+                item.setItemMeta(damage);
+                budget.changes.add(location + ": corrected durability");
+            }
+            normalizeEnchantments(item, budget, location);
+            meta = item.getItemMeta();
             if (meta instanceof PotionMeta potion && !validPotion(material, potion))
                 return remove(item, budget, location, "prohibited or custom potion effects");
-            if (meta instanceof BundleMeta || (meta instanceof BlockStateMeta && !shulker))
+            if (meta instanceof BundleMeta || (meta instanceof BlockStateMeta && !shulker && material != Material.SHIELD))
                 return remove(item, budget, location, "unsupported storage or block metadata");
         }
         int max = Math.min(material.getMaxStackSize(), budget.available(material));
@@ -227,25 +227,67 @@ public final class TierKitRules {
         return item;
     }
 
-    private static boolean validComponents(ItemStack item, boolean shulker) {
-        Set<io.papermc.paper.datacomponent.DataComponentType> excluded = new HashSet<>();
+    private static void normalizeComponents(ItemStack item, boolean shulker, Budget budget, String location) {
         ItemStack baseline = new ItemStack(item.getType());
         Set<io.papermc.paper.datacomponent.DataComponentType> components = new HashSet<>(baseline.getDataTypes());
         components.addAll(item.getDataTypes());
-        Set<String> cosmetic = Set.of("custom_name", "repair_cost", "damage", "enchantments", "stored_enchantments",
-                "dyed_color", "trim", "banner_patterns", "base_color");
+        Set<String> allowed = Set.of("custom_name", "item_name", "lore", "repair_cost", "damage", "enchantments",
+                "stored_enchantments", "dyed_color", "trim", "banner_patterns", "base_color",
+                "tooltip_display", "enchantment_glint_override", "custom_model_data", "item_model");
         for (var component : components) {
-            if (!component.getKey().getNamespace().equals("minecraft")) continue;
             String key = component.getKey().getKey();
-            boolean allowed = cosmetic.contains(key)
+            boolean vanilla = component.getKey().getNamespace().equals("minecraft");
+            boolean preserve = vanilla && (allowed.contains(key)
                     || (key.equals("potion_contents") && item.getItemMeta() instanceof PotionMeta)
                     || (key.equals("fireworks") && item.getType() == Material.FIREWORK_ROCKET)
                     || (key.equals("firework_explosion") && item.getType() == Material.FIREWORK_STAR)
                     || (key.equals("charged_projectiles") && item.getType() == Material.CROSSBOW)
-                    || (shulker && (key.equals("container") || key.equals("block_entity_data")));
-            if (allowed) excluded.add(component);
+                    || (shulker && (key.equals("container") || key.equals("block_entity_data"))));
+            if (preserve) continue;
+            ItemStack before = item.clone();
+            item.resetData(component);
+            if (!item.isSimilar(before)) budget.changes.add(location + ": reset " + key + " to vanilla");
         }
-        return item.matchesWithoutData(baseline, excluded, true);
+    }
+
+    private static void normalizeEnchantments(ItemStack item, Budget budget, String location) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        List<Enchantment> kept = new ArrayList<>();
+        List<Map.Entry<Enchantment, Integer>> enchants = new ArrayList<>(meta.getEnchants().entrySet());
+        enchants.sort(java.util.Comparator.comparingInt((Map.Entry<Enchantment, Integer> entry)->entry.getValue()).reversed()
+                .thenComparing(entry->entry.getKey().getKey().toString()));
+        for (var entry : enchants) {
+            Enchantment enchantment = entry.getKey();
+            int level = entry.getValue();
+            boolean legal = enchantment.getKey().getNamespace().equals("minecraft") && enchantment.canEnchantItem(item)
+                    && level >= enchantment.getStartLevel() && kept.stream().noneMatch(enchantment::conflictsWith);
+            if (!legal) {
+                meta.removeEnchant(enchantment);
+                budget.changes.add(location + ": removed invalid enchantment " + enchantment.getKey().getKey());
+            } else {
+                kept.add(enchantment);
+                if (level > enchantment.getMaxLevel()) {
+                    meta.removeEnchant(enchantment);
+                    meta.addEnchant(enchantment, enchantment.getMaxLevel(), true);
+                    budget.changes.add(location + ": capped " + enchantment.getKey().getKey());
+                }
+            }
+        }
+        if (meta instanceof EnchantmentStorageMeta book) {
+            for (var entry : new ArrayList<>(book.getStoredEnchants().entrySet())) {
+                Enchantment enchantment = entry.getKey();
+                if (!enchantment.getKey().getNamespace().equals("minecraft") || entry.getValue() < enchantment.getStartLevel()) {
+                    book.removeStoredEnchant(enchantment);
+                    budget.changes.add(location + ": removed invalid stored enchantment");
+                } else if (entry.getValue() > enchantment.getMaxLevel()) {
+                    book.removeStoredEnchant(enchantment);
+                    book.addStoredEnchant(enchantment,enchantment.getMaxLevel(),true);
+                    budget.changes.add(location + ": capped stored enchantment");
+                }
+            }
+        }
+        item.setItemMeta(meta);
     }
 
     public boolean allowsShulkerItem(ItemStack item) {
@@ -264,18 +306,6 @@ public final class TierKitRules {
             String key = effect.getType().getKey().getKey();
             if (bannedEffects.contains(key)) return false;
             if (key.equals("weakness") && !(material == Material.TIPPED_ARROW ? weaknessArrows : weaknessPotions)) return false;
-        }
-        return true;
-    }
-
-    private static boolean validEnchantments(ItemStack item, Map<Enchantment, Integer> enchants, boolean applied) {
-        for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
-            Enchantment enchantment = entry.getKey();
-            if (!enchantment.getKey().getNamespace().equals("minecraft") || entry.getValue() < enchantment.getStartLevel()
-                    || entry.getValue() > enchantment.getMaxLevel() || (applied && !enchantment.canEnchantItem(item))) return false;
-            if (applied) for (Enchantment other : enchants.keySet()) {
-                if (!enchantment.equals(other) && enchantment.conflictsWith(other)) return false;
-            }
         }
         return true;
     }

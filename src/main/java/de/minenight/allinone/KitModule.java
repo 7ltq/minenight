@@ -225,6 +225,31 @@ public final class KitModule extends MineNightModule implements Listener {
                 readItems(playerData.getList(enderPath(owner, number), List.of()), 27)));
     }
 
+    public ItemStack[] tierKitroomPage(int page) {
+        return readItems(rooms.getList(roomPath(Math.max(1, Math.min(3,page))), List.of()),45);
+    }
+
+    public void saveTierKit(Player player, int number, de.minenight.tiertest.TierKitSnapshot kit) throws IOException {
+        if (number < 1 || number > 9 || !de.minenight.tiertest.TierTestModule.canEditKit(player))
+            throw new IllegalStateException("Kit editing is unavailable");
+        String path=kitPath(player.getUniqueId(),number);
+        String ender=enderPath(player.getUniqueId(),number);
+        String previous=playerData.saveToString();
+        playerData.set(path+".storage",copyItems(kit.storage()));
+        playerData.set(path+".armor",copyItems(kit.armor()));
+        playerData.set(path+".offhand",kit.offhand());
+        playerData.set(ender,copyItems(kit.ender()));
+        File tmp=new File(playerFile.getParentFile(),playerFile.getName()+".tier.tmp");
+        try {
+            playerData.save(tmp);
+            try { java.nio.file.Files.move(tmp.toPath(),playerFile.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
+            catch (java.nio.file.AtomicMoveNotSupportedException error) { java.nio.file.Files.move(tmp.toPath(),playerFile.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING); }
+        } catch(IOException error) {
+            try { playerData.loadFromString(previous); } catch(org.bukkit.configuration.InvalidConfigurationException ignored) {}
+            throw error;
+        }
+    }
+
     private void loadKit(Player player, UUID owner, int number) {
         if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         String path = kitPath(owner, number);
