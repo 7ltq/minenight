@@ -112,6 +112,7 @@ public final class KitModule extends MineNightModule implements Listener {
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(player)) return;
         if (getConfig().getBoolean("death.compact-drops", true) && !event.getKeepInventory() && !event.getDrops().isEmpty()) {
             Location location = player.getLocation().clone();
             World world = location.getWorld();
@@ -161,11 +162,12 @@ public final class KitModule extends MineNightModule implements Listener {
 
     @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(event.getPlayer())) return;
         if (!getConfig().getBoolean("death.auto-equip-kit-1", true)) return;
         UUID playerId = event.getPlayer().getUniqueId();
         Bukkit.getScheduler().runTaskLater(core(), () -> {
             Player player = Bukkit.getPlayer(playerId);
-            if (player == null || !player.isOnline() || player.isDead()) return;
+            if (player == null || !player.isOnline() || player.isDead() || de.minenight.tiertest.TierTestModule.locked(player)) return;
             if (kitExists(playerId, 1)) loadKit(player, playerId, 1);
         }, 1L);
     }
@@ -199,6 +201,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void recordKit(Player player, int number) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)&&!de.minenight.tiertest.TierTestModule.editingKit(player)) return;
         String path = kitPath(player.getUniqueId(), number);
         PlayerInventory inv = player.getInventory();
         playerData.set(path + ".storage", copyItems(inv.getStorageContents()));
@@ -212,7 +215,43 @@ public final class KitModule extends MineNightModule implements Listener {
         return playerData.contains(kitPath(id, number) + ".storage");
     }
 
+    public java.util.Optional<de.minenight.tiertest.TierKitSnapshot> snapshotForTierTest(UUID owner, int number) {
+        if (number < 1 || number > 9 || !kitExists(owner, number)) return java.util.Optional.empty();
+        String path = kitPath(owner, number);
+        return java.util.Optional.of(new de.minenight.tiertest.TierKitSnapshot(
+                readItems(playerData.getList(path + ".storage", List.of()), 36),
+                readItems(playerData.getList(path + ".armor", List.of()), 4),
+                playerData.getItemStack(path + ".offhand"),
+                readItems(playerData.getList(enderPath(owner, number), List.of()), 27)));
+    }
+
+    public ItemStack[] tierKitroomPage(int page) {
+        return readItems(rooms.getList(roomPath(Math.max(1, Math.min(3,page))), List.of()),45);
+    }
+
+    public void saveTierKit(Player player, int number, de.minenight.tiertest.TierKitSnapshot kit) throws IOException {
+        if (number < 1 || number > 9 || !de.minenight.tiertest.TierTestModule.canEditKit(player))
+            throw new IllegalStateException("Kit editing is unavailable");
+        String path=kitPath(player.getUniqueId(),number);
+        String ender=enderPath(player.getUniqueId(),number);
+        String previous=playerData.saveToString();
+        playerData.set(path+".storage",copyItems(kit.storage()));
+        playerData.set(path+".armor",copyItems(kit.armor()));
+        playerData.set(path+".offhand",kit.offhand());
+        playerData.set(ender,copyItems(kit.ender()));
+        File tmp=new File(playerFile.getParentFile(),playerFile.getName()+".tier.tmp");
+        try {
+            playerData.save(tmp);
+            try { java.nio.file.Files.move(tmp.toPath(),playerFile.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
+            catch (java.nio.file.AtomicMoveNotSupportedException error) { java.nio.file.Files.move(tmp.toPath(),playerFile.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING); }
+        } catch(IOException error) {
+            try { playerData.loadFromString(previous); } catch(org.bukkit.configuration.InvalidConfigurationException ignored) {}
+            throw error;
+        }
+    }
+
     private void loadKit(Player player, UUID owner, int number) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)&&!de.minenight.tiertest.TierTestModule.editingKit(player)) return;
         String path = kitPath(owner, number);
         if (!kitExists(owner, number)) {
             player.sendMessage(PREFIX + "Kit " + number + " is empty. Right-click the chest in /kit to save one.");
@@ -275,6 +314,15 @@ public final class KitModule extends MineNightModule implements Listener {
         return holder.inventory;
     }
 
+    public void openTierKitMenu(Player player){
+        if(de.minenight.tiertest.TierTestModule.editingKit(player))openMain(player);
+    }
+    public boolean isTierEditorInventory(Player player,Inventory inventory){
+        if(!de.minenight.tiertest.TierTestModule.editingKit(player))return false;
+        if(inventory.getType()==org.bukkit.event.inventory.InventoryType.CRAFTING)return true;
+        return inventory.getHolder() instanceof Screen screen&&screen.owner.equals(player.getUniqueId())&&Set.of("main","preview","room","kitender").contains(screen.type);
+    }
+
     private void openMain(Player player) {
         Inventory inv = screen("main", player, 0, 1, 45, "§9MineNight §8» §bKits");
         for (int slot : DECOR_TOP) inv.setItem(slot, pane());
@@ -309,7 +357,8 @@ public final class KitModule extends MineNightModule implements Listener {
                 "§7Open the shared item selection",
                 "§7Same supplies for every player",
                 "§7Use /kitroom"));
-        inv.setItem(34, icon(Material.BARRIER, "Close", "§7Close this menu"));
+        inv.setItem(34, de.minenight.tiertest.TierTestModule.editingKit(player)?icon(Material.ARROW,"Back to Tier Test","§7Restore your normal inventory"):icon(Material.BARRIER, "Close", "§7Close this menu"));
+        if(de.minenight.tiertest.TierTestModule.editingKit(player))inv.setItem(32,icon(Material.BUCKET,"Clear editing inventory","§7Clear temporary items"));
         player.openInventory(inv);
     }
 
@@ -396,6 +445,11 @@ public final class KitModule extends MineNightModule implements Listener {
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Players only.");
             return true;
+        }
+        if (de.minenight.tiertest.TierTestModule.locked(player)) {
+            if (command.getName().equalsIgnoreCase("regear") && core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier) return tier.regear(player);
+            String requested=command.getName().toLowerCase(java.util.Locale.ROOT);
+            if(!de.minenight.tiertest.TierTestModule.editingKit(player)||!(Set.of("kit","kitroom","copy","copykit").contains(requested)||requested.matches("k[1-9]"))){player.sendMessage("§cKits are locked during a tier test."); return true;}
         }
         String name = command.getName().toLowerCase();
         if (name.matches("k[1-9]")) {
@@ -488,6 +542,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     @EventHandler public void onInteract(PlayerInteractEvent event) {
+        if (de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) return;
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
         if (!(event.getClickedBlock().getState() instanceof org.bukkit.block.ShulkerBox box)) return;
         if (!box.getPersistentDataContainer().has(shulkerKey, PersistentDataType.BYTE)) return;
@@ -542,18 +597,115 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void refillPlayer(Player player, int kit) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         String path = kitPath(player.getUniqueId(), kit);
         if (!kitExists(player.getUniqueId(), kit)) {
             player.sendMessage(PREFIX + "Save kit " + kit + " first.");
             return;
         }
+        refillFromSnapshot(player, readItems(playerData.getList(path + ".storage", List.of()), 36), playerData.getItemStack(path + ".offhand"), List.of());
+    }
+
+    public long regearDelayMillis() { return Math.max(0, getConfig().getLong("regear.combat-delay-seconds",10)) * 1000L; }
+    public long regearWaitMillis(Player player) {
+        return Math.max(0,regearDelayMillis()-(System.currentTimeMillis()-lastHit.getOrDefault(player.getUniqueId(),0L)));
+    }
+    private static boolean tierRefillable(ItemStack item){
+        if(item==null||item.getType().isAir())return false;
+        Material material=item.getType();
+        String name=material.name();
+        return !Set.of(Material.TOTEM_OF_UNDYING,Material.ELYTRA,Material.FIREWORK_ROCKET,Material.TURTLE_HELMET).contains(material)
+                &&!name.endsWith("_HELMET")&&!name.endsWith("_CHESTPLATE")&&!name.endsWith("_LEGGINGS")&&!name.endsWith("_BOOTS")
+                &&!name.endsWith("_HORSE_ARMOR")&&!name.endsWith("_NAUTILUS_ARMOR")&&material!=Material.WOLF_ARMOR;
+    }
+    private static boolean isShulker(ItemStack item){return item!=null&&item.getType().name().endsWith("SHULKER_BOX");}
+    private static void flatten(ItemStack item,List<ItemStack> list){
+        if(item==null||item.getType().isAir())return;
+        if(isShulker(item)&&item.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta&&meta.getBlockState() instanceof org.bukkit.block.ShulkerBox box){
+            list.add(new ItemStack(item.getType()));
+            for(ItemStack nested:box.getSnapshotInventory().getContents())flatten(nested,list);
+        }else list.add(item);
+    }
+    public void refillTierPlayer(Player player,de.minenight.tiertest.TierKitSnapshot kit,List<ItemStack> external){
+        if(!(core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier)||!tier.isActive(player))return;
+        PlayerInventory inv=player.getInventory();
+        ItemStack[] storage=inv.getStorageContents(),armor=inv.getArmorContents(),offhand={inv.getItemInOffHand()},ender=player.getEnderChest().getContents();
+        ItemStack[][] actual={storage,armor,offhand,ender},desired={kit.storage(),kit.armor(),new ItemStack[]{kit.offhand()},kit.ender()};
+        List<ItemStack> targets=new ArrayList<>(),owned=new ArrayList<>();
+        for(ItemStack[] array:desired)for(ItemStack item:array)flatten(item,targets);
+        for(ItemStack[] array:actual)for(ItemStack item:array)flatten(item,owned);
+        for(ItemStack item:external)flatten(item,owned);
+        int added=0;
+        for(int section=0;section<actual.length;section++)for(int slot=0;slot<actual[section].length;slot++){
+            ItemStack wanted=desired[section][slot],current=actual[section][slot];
+            if(!tierRefillable(wanted))continue;
+            if(isShulker(wanted)){
+                if(current==null||current.getType().isAir()){
+                    int targetBoxes=0,ownedBoxes=0;
+                    for(ItemStack item:targets)if(item.getType()==wanted.getType())targetBoxes+=item.getAmount();
+                    for(ItemStack item:owned)if(item.getType()==wanted.getType())ownedBoxes+=item.getAmount();
+                    if(ownedBoxes>=targetBoxes)continue;
+                    current=new ItemStack(wanted.getType());
+                    actual[section][slot]=current;owned.add(current.clone());added++;
+                }
+                if(current.getType()!=wanted.getType()||!(current.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta currentMeta)||!(wanted.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta wantedMeta)||!(currentMeta.getBlockState() instanceof org.bukkit.block.ShulkerBox box)||!(wantedMeta.getBlockState() instanceof org.bukkit.block.ShulkerBox template))continue;
+                ItemStack[] contents=box.getSnapshotInventory().getContents(),goal=template.getSnapshotInventory().getContents();
+                for(int i=0;i<contents.length;i++){ItemStack previous=contents[i];contents[i]=refillTierSlot(previous,goal[i],targets,owned);added+=amount(contents[i])-amount(previous);}
+                box.getSnapshotInventory().setContents(contents);currentMeta.setBlockState(box);current.setItemMeta(currentMeta);
+            }else{
+                ItemStack updated=refillTierSlot(current,wanted,targets,owned);
+                added+=amount(updated)-amount(current);actual[section][slot]=updated;
+            }
+        }
+        // Top up matching stacks or free inventory slots when the original slot is occupied.
+        for(ItemStack wanted:targets){
+            if(!tierRefillable(wanted)||isShulker(wanted))continue;
+            for(int slot=0;slot<storage.length;slot++){
+                ItemStack current=storage[slot];
+                if(amount(current)==0||!tierMatches(current,wanted))continue;
+                ItemStack goal=wanted.clone();goal.setAmount(wanted.getMaxStackSize());
+                ItemStack result=refillTierSlot(current,goal,targets,owned);
+                added+=amount(result)-amount(current);storage[slot]=result;
+            }
+            for(int slot=0;slot<storage.length;slot++){
+                if(amount(storage[slot])!=0)continue;
+                ItemStack goal=wanted.clone();goal.setAmount(wanted.getMaxStackSize());
+                ItemStack result=refillTierSlot(null,goal,targets,owned);
+                if(result==null)break;
+                added+=amount(result);storage[slot]=result;
+            }
+        }
+        inv.setStorageContents(storage);inv.setArmorContents(armor);inv.setItemInOffHand(offhand[0]==null?new ItemStack(Material.AIR):offhand[0]);player.getEnderChest().setContents(ender);
+        player.updateInventory();player.sendMessage(PREFIX+"Regeared "+added+" item(s). Totems, Elytra, Rockets and armor are excluded.");
+    }
+    private static int amount(ItemStack item){return item==null||item.getType().isAir()?0:item.getAmount();}
+    private static boolean tierMatches(ItemStack a,ItemStack b){
+        if(a==null||b==null||a.getType()!=b.getType()||a.getType().isAir())return false;
+        if(a.isSimilar(b))return true;
+        if(a.getType().getMaxDurability()==0)return false;
+        ItemStack first=a.clone(),second=b.clone();
+        if(first.getItemMeta() instanceof Damageable x&&second.getItemMeta() instanceof Damageable y){
+            x.setDamage(0);y.setDamage(0);first.setItemMeta(x);second.setItemMeta(y);
+        }
+        return first.isSimilar(second);
+    }
+    private static ItemStack refillTierSlot(ItemStack current,ItemStack wanted,List<ItemStack> targets,List<ItemStack> owned){
+        if(!tierRefillable(wanted)||isShulker(wanted)||amount(current)>0&&!tierMatches(current,wanted))return current;
+        int target=0,have=0;
+        for(ItemStack item:targets)if(tierMatches(item,wanted))target+=item.getAmount();
+        for(ItemStack item:owned)if(tierMatches(item,wanted))have+=item.getAmount();
+        int add=Math.min(target-have,Math.min(wanted.getAmount()-amount(current),wanted.getMaxStackSize()-amount(current)));
+        if(add<=0)return current;
+        ItemStack fresh=wanted.clone();fresh.setAmount(add);owned.add(fresh.clone());
+        ItemStack result=amount(current)>0?current.clone():wanted.clone();result.setAmount(amount(current)+add);return result;
+    }
+    private void refillFromSnapshot(Player player, ItemStack[] desiredStorage, ItemStack desiredOffhand, List<ItemStack> external) {
         PlayerInventory inv = player.getInventory();
         ItemStack[] storage = inv.getStorageContents();
         ItemStack[] armor = inv.getArmorContents();
         ItemStack[] offhand = {inv.getItemInOffHand()};
-        ItemStack[] desiredStorage = readItems(playerData.getList(path + ".storage", List.of()), storage.length);
         ItemStack[] desired = Arrays.copyOf(desiredStorage, storage.length + 1);
-        desired[storage.length] = playerData.getItemStack(path + ".offhand");
+        desired[storage.length] = desiredOffhand;
         int moved = 0;
         int created = 0;
         int blocked = 0;
@@ -593,7 +745,9 @@ public final class KitModule extends MineNightModule implements Listener {
                 blocked++;
                 continue;
             }
-            int shortage = targetAmount(desired, wanted) - ownedAmount(storage, offhand, armor, wanted);
+            int outside=0;
+            for(ItemStack item:external)if(matchingRegearItem(item,wanted))outside+=item.getAmount();
+            int shortage = targetAmount(desired, wanted) - ownedAmount(storage, offhand, armor, wanted) - outside;
             if (shortage <= 0) continue;
             int slotMissing = current == null || current.getType().isAir()
                     ? wanted.getAmount() : Math.max(0, wanted.getAmount() - current.getAmount());
@@ -649,7 +803,9 @@ public final class KitModule extends MineNightModule implements Listener {
                     openRoom(player, 1, false);
                     return;
                 }
+                if (slot == 32 && de.minenight.tiertest.TierTestModule.editingKit(player)) {player.getInventory().clear();player.updateInventory();return;}
                 if (slot == 34) {
+                    if(de.minenight.tiertest.TierTestModule.editingKit(player)&&core().module("tiertest") instanceof de.minenight.tiertest.TierTestModule tier){Bukkit.getScheduler().runTask(core(),()->tier.endKitEdit(player));return;}
                     player.closeInventory();
                     return;
                 }

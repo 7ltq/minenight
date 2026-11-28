@@ -75,7 +75,7 @@ public class GuiManager {
             if (slot >= size - 9) break;
             String role    = g.getFormattedRole();
             String display = role.isEmpty() ? "<white>" + g.getName() : role;
-            inv.setItem(slot++, buildItem(Material.PLAYER_HEAD,
+            inv.setItem(slot++, buildItem(Material.NAME_TAG,
                 display,
                 List.of(
                     "<#B7C7E8>Group: <white>" + g.getName(),
@@ -327,7 +327,7 @@ public class GuiManager {
     }
 
 
-    public static Inventory buildPlayerList(MineNightPerms plugin) {
+    public static Inventory buildPlayerList(MineNightPerms plugin, org.bukkit.entity.Player viewer) {
         var players = Bukkit.getOnlinePlayers();
         int size = Math.max(27, Math.min(((players.size() / 9) + 2) * 9, 54));
         Inventory inv = Bukkit.createInventory(null, size,
@@ -337,9 +337,11 @@ public class GuiManager {
         for (var p : players) {
             if (slot >= size - 9) break;
             var pd = plugin.getPlayerDataManager().getPlayerData(p.getUniqueId());
-            inv.setItem(slot++, buildItem(Material.PLAYER_HEAD,
+            ItemStack icon = buildItem(de.minenight.allinone.GuiPlayerIcons.material(viewer),
                 "<white>" + p.getName(),
-                List.of("<#B7C7E8>Current group: <white>" + pd.getGroupName())));
+                List.of("<#B7C7E8>Current group: <white>" + pd.getGroupName()));
+            de.minenight.allinone.GuiPlayerIcons.applyProfile(icon, p);
+            inv.setItem(slot++, icon);
         }
 
         inv.setItem(size - 1, buildItem(Material.ARROW, "<#91B2FF>← Back</#91B2FF>", null));

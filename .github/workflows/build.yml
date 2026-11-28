@@ -24,6 +24,11 @@ jobs:
           cache: maven
       - name: Build standalone core
         run: mvn -B -DskipTests clean package
+      - name: Run tier round score regression checks
+        run: |
+          mkdir -p target/tier-score-test
+          javac -d target/tier-score-test src/main/java/de/minenight/tiertest/TierRoundScore.java src/test/java/de/minenight/tiertest/TierRoundScoreTest.java
+          java -cp target/tier-score-test de.minenight.tiertest.TierRoundScoreTest
       - name: Verify no embedded anti-cheat
         run: |
           python3 -c "import zipfile; z=zipfile.ZipFile('target/MineNightAllInOne.jar'); assert not any(n.startswith(('com/deathmotion/totemguard/', 'ac/grim/grimac/', 'de/minenight/totemmonitor/')) or n.endswith('/AntiCheatModule.class') for n in z.namelist()); assert z.testzip() is None"

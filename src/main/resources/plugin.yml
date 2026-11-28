@@ -14,6 +14,22 @@ softdepend:
 - Votifier
 - NuVotifier
 commands:
+  tiertest:
+    description: Open the tier test menu or check a kit.
+    usage: /tiertest [check|accept|decline|leave|icons|pause|resume]
+    permission: minenight.tiertest.use
+  below:
+    description: Save the Below HT3 premade kit.
+    usage: /below ht3 kit create
+    permission: minenight.tiertest.staff
+  above:
+    description: Save the Above HT3 premade kit.
+    usage: /above ht3 kit create
+    permission: minenight.tiertest.staff
+  rerun:
+    description: Request or accept a round rerun.
+    usage: /rerun this round
+    permission: minenight.tiertest.use
   staffmode:
     aliases: [sfmode]
     description: Toggle staff alert mode.
@@ -227,6 +243,10 @@ commands:
     usage: /void [set|status|reload]
     permission: minenightvoid.teleport
 permissions:
+  minenight.tiertest.use:
+    default: true
+  minenight.tiertest.staff:
+    default: op
   minenight.staff.mode:
     default: op
   minenight.screenshare:

@@ -151,6 +151,7 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
             saveConfig(); tell(player,"set"); return true;
         }
         if (!(sender instanceof Player player)) { sender.sendMessage("Player only."); return true; }
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cYou are in a tier test."); return true; }
         if (!player.hasPermission("minenightspawn.use")) { tell(player,"no-permission"); return true; }
         if (!getConfig().getBoolean("settings.spawn-command-allowed-during-combat",false) && player.getScoreboardTags().contains("minenight_rtpq_duel")) { tell(player,"combat"); return true; }
         sendSpawn(player); return true;
@@ -160,10 +161,11 @@ public final class MineNightPracticeSpawn extends de.minenight.allinone.MineNigh
         // MineNight always starts players at its configured practice spawn.
         // Do not let an old false value in an existing config disable this behavior.
         Bukkit.getScheduler().runTaskLater(core(), () -> {
-            if (event.getPlayer().isOnline()) sendSpawn(event.getPlayer(), false);
+            if (event.getPlayer().isOnline() && !de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) sendSpawn(event.getPlayer(), false);
         }, 5L);
     }
     @EventHandler(priority=EventPriority.HIGH) public void onRespawn(PlayerRespawnEvent event) {
+        if (de.minenight.tiertest.TierTestModule.protectedInventory(event.getPlayer())) return;
         if (!getConfig().getBoolean("settings.override-respawn-location",true)) return;
         Location location = spawn();
         if (location != null) event.setRespawnLocation(location);

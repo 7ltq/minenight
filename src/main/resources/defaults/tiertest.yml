@@ -1,0 +1,55 @@
+wins:
+  below: 3
+  above: 4
+rules:
+  limits:
+    RESPAWN_ANCHOR: 64
+    FIREWORK_ROCKET: 24
+  max-armor-pieces: 4
+  banned-items:
+    - BEACON
+    - MILK_BUCKET
+    - ENCHANTED_GOLDEN_APPLE
+  banned-effects: []
+  below:
+    limits:
+      TOTEM_OF_UNDYING: 14
+    allow-weakness-arrows: false
+    allow-weakness-potions: false
+  above:
+    limits:
+      TOTEM_OF_UNDYING: 8
+    allow-weakness-arrows: true
+    allow-weakness-potions: false
+    shulker-contents:
+      - POTION
+      - SPLASH_POTION
+      - LINGERING_POTION
+      - END_CRYSTAL
+      - OBSIDIAN
+      - ENDER_PEARL
+      - EXPERIENCE_BOTTLE
+
+settings:
+  invitation-seconds: 60
+  setup-seconds: 180
+  countdown-seconds: 3
+  round-review-seconds: 3
+  final-review-seconds: 8
+  reconnect-seconds: 30
+  spawn-distance: 15
+  render-distance: 12
+  arena-radius: 150
+  rerun-seconds: 8
+messages:
+  prefix: '§8[§9MineNight§8] §7'
+  blocked: '§cThat action is unavailable during a tier test.'
+  invite-expired: 'Tier test invitation expired.'
+  match-aborted: 'Tier test cancelled. Your original inventory will be restored.'
+gui:
+  title: '§9Tier Test'
+  below-icon: DIAMOND_SWORD
+  above-icon: NETHERITE_SWORD
+  premade-icon: ENDER_CHEST
+sounds:
+  winner: UI_TOAST_CHALLENGE_COMPLETE
