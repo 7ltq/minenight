@@ -380,6 +380,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
                 if (!core().isEnabled()) return;
                 Bukkit.getScheduler().runTask(core(), () -> {
                     if (result.isDone() || !valid.getAsBoolean()) { result.cancel(false); return; }
+                    try {
                     if (error == null && a.getNow(null) != null && b.getNow(null) != null && world.isChunkLoaded(x >> 4, z >> 4) && world.isChunkLoaded(bx >> 4, bz >> 4)) {
                         Location first = new Location(world, x + .5, world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1, z + .5);
                         Location second = new Location(world, bx + .5, world.getHighestBlockYAt(bx, bz, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1, bz + .5);
@@ -394,6 +395,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
                         }
                     }
                     findTierPair(world, destination, distance, remaining - 1, available, valid, result);
+                    } catch (RuntimeException failure) { result.completeExceptionally(failure); }
                 });
             });
         } catch (RuntimeException error) { result.completeExceptionally(error); }

@@ -56,6 +56,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
         final Set<UUID> absent = new HashSet<>();
         final Set<UUID> rerunUsed = new HashSet<>();
         final Map<UUID, Objective> boards = new HashMap<>();
+        final Map<UUID, Location> origins = new HashMap<>();
+        boolean enteredArena;
         final Map<Location, UUID> containers = new HashMap<>();
         Stage stage = Stage.TYPE;
         TierKitRules.Type type;
@@ -140,9 +142,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void apply(Player p, TierKitSnapshot kit) {
         p.getInventory().setStorageContents(kit.storage());
         p.getInventory().setArmorContents(kit.armor());
-        p.getInventory().setItemInOffHand(kit.offhand());
+        p.getInventory().setItemInOffHand(kit.offhand()==null?new ItemStack(Material.AIR):kit.offhand());
         p.getEnderChest().setContents(kit.ender());
-        p.setItemOnCursor(null);
+        p.setItemOnCursor(new ItemStack(Material.AIR));
         p.updateInventory();
     }
     private void stats(Player p) {
@@ -207,7 +209,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
             p.setAbsorptionAmount(Math.max(0,y.getDouble("absorption")));p.setFireTicks(y.getInt("fire"));
             p.setTotalExperience(y.getInt("total-exp"));p.setLevel(y.getInt("level"));p.setExp((float)y.getDouble("exp"));
             p.setViewDistance(Math.max(2,Math.min(32,y.getInt("view-distance",8))));
-            p.setScoreboard(originalBoards.getOrDefault(id,Bukkit.getScoreboardManager().getMainScoreboard()));
+            Scoreboard original=originalBoards.get(id);
+            if(original!=null&&p.getScoreboard()!=original)p.setScoreboard(original);
+            else if(original==null)p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
             p.saveData();
             Files.delete(file.toPath());
             recovery.remove(id); originalBoards.remove(id);
@@ -326,7 +330,6 @@ public final class TierTestModule extends MineNightModule implements Listener {
             de.minenight.allinone.GuiPlayerIcons.applyProfile(head,other);
             put(menu,i-index*21,head,()->invite(p,other));
         }
-        put(menu,22,icon(Material.NAME_TAG,"Toggle player icons",de.minenight.allinone.GuiPlayerIcons.useHeads(p)?"Current: Player heads":"Current: Name tags","Click if heads are clipped"),()->{de.minenight.allinone.GuiPlayerIcons.toggle(p);openOpponents(p,index);});
         if(index>0)put(menu,21,icon(Material.ARROW,"Previous"),()->openOpponents(p,index-1));
         if(index<last)put(menu,26,icon(Material.ARROW,"Next"),()->openOpponents(p,index+1));
         p.openInventory(menu.inventory);
@@ -458,32 +461,46 @@ public final class TierTestModule extends MineNightModule implements Listener {
 
     private void beginMatch(Match m){
         if(!current(m)||m.backedUp)return;
+        String step="validate players";
         try{
             for(UUID id:m.ids()){
-                Player p=Objects.requireNonNull(Bukkit.getPlayer(id));
+                Player p=Objects.requireNonNull(Bukkit.getPlayer(id),"Player disconnected");
                 p.closeInventory();
-                if(p.isDead()||p.getGameMode()!=GameMode.SURVIVAL||p.getItemOnCursor().getType()!=Material.AIR)throw new IllegalStateException("Player not ready");
-                saveBackup(p);
+                if(p.isDead()||p.getGameMode()!=GameMode.SURVIVAL)throw new IllegalStateException(p.getName()+" must be alive and in survival mode");
+                ItemStack cursor=p.getItemOnCursor();
+                if(cursor!=null&&!cursor.getType().isAir()&&cursor.getAmount()>0)throw new IllegalStateException(p.getName()+" still has an item on the cursor");
+                m.origins.put(id,p.getLocation().clone());
             }
-            m.backedUp=true;m.score=new TierRoundScore(m.a,m.b,wins(m.type));
             for(UUID id:m.ids()){
                 Player p=Objects.requireNonNull(Bukkit.getPlayer(id));
-                p.addScoreboardTag("minenight_tiertest");
-                p.setViewDistance(setting("render-distance",12,2,32));
-                createBoard(m,p);
-                p.getInventory().clear();p.getEnderChest().clear();
+                step="save inventory backup for "+p.getName();
+                saveBackup(p);
             }
+            step="initialize round score";
+            m.score=new TierRoundScore(m.a,m.b,wins(m.type));
+            m.backedUp=true;
+            step="search arena in "+m.biome;
             startRound(m);
-        }catch(Exception error){getLogger().log(java.util.logging.Level.WARNING,"Tier test start failed",error);finish(m,null,msg("match-aborted","Tier test cancelled."));}
+        }catch(Exception error){failMatch(m,step,error);}
+    }
+    private void failMatch(Match m,String step,Throwable error){
+        String detail=error.getMessage()==null?error.getClass().getSimpleName():error.getMessage();
+        getLogger().log(java.util.logging.Level.WARNING,"[TierTest] "+step+" failed for "+name(m.a)+" vs "+name(m.b)+": "+detail,error);
+        finish(m,null,"§cTier test failed during "+step+". "+detail);
     }
     private void createBoard(Match m,Player p){
         Scoreboard previous=originalBoards.getOrDefault(p.getUniqueId(),p.getScoreboard());
         Scoreboard board=Bukkit.getScoreboardManager().getNewScoreboard();
         for(Team old:previous.getTeams()){
-            Team team=board.registerNewTeam(old.getName());team.prefix(old.prefix());team.suffix(old.suffix());if(old.color()!=null)team.color(net.kyori.adventure.text.format.NamedTextColor.nearestTo(old.color()));
-            team.setAllowFriendlyFire(old.allowFriendlyFire());team.setCanSeeFriendlyInvisibles(old.canSeeFriendlyInvisibles());
-            for(Team.Option option:Team.Option.values())team.setOption(option,old.getOption(option));
-            for(String entry:old.getEntries())team.addEntry(entry);
+            try{
+                Team team=board.registerNewTeam(old.getName());
+                if(old.prefix()!=null)team.prefix(old.prefix());
+                if(old.suffix()!=null)team.suffix(old.suffix());
+                if(old.color()!=null)team.color(net.kyori.adventure.text.format.NamedTextColor.nearestTo(old.color()));
+                team.setAllowFriendlyFire(old.allowFriendlyFire());team.setCanSeeFriendlyInvisibles(old.canSeeFriendlyInvisibles());
+                for(Team.Option option:Team.Option.values()){Team.OptionStatus status=old.getOption(option);if(status!=null)team.setOption(option,status);}
+                for(String entry:old.getEntries())team.addEntry(entry);
+            }catch(RuntimeException error){getLogger().log(java.util.logging.Level.WARNING,"[TierTest] Could not copy scoreboard team "+old.getName(),error);}
         }
         Objective objective=board.registerNewObjective("mn_tiertest",Criteria.DUMMY,legacy("§9§lMineNight"));
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);m.boards.put(p.getUniqueId(),objective);p.setScoreboard(board);updateBoard(m);
@@ -521,17 +538,31 @@ public final class TierTestModule extends MineNightModule implements Listener {
         tell(m,"Finding a safe arena...");
         rtp.findTierPair(m.biome,setting("spawn-distance",15,1,64),pair->free(m,pair),()->current(m)&&m.epoch==epoch).whenComplete((pair,error)->{
             if(!current(m)||m.epoch!=epoch)return;
-            if(error!=null||pair==null){finish(m,null,"§cCould not find a safe arena.");return;}
-            m.center=pair.first().clone().add(pair.second().toVector().subtract(pair.first().toVector()).multiply(.5));
-            Player a=Bukkit.getPlayer(m.a),b=Bukkit.getPlayer(m.b);
-            if(a==null||b==null){finish(m,null,"A player disconnected.");return;}
-            internalTeleport.add(m.a);internalTeleport.add(m.b);
-            boolean success;
-            try{success=a.teleport(pair.first(),PlayerTeleportEvent.TeleportCause.PLUGIN)&&b.teleport(pair.second(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
-            finally{internalTeleport.remove(m.a);internalTeleport.remove(m.b);}
-            if(!success){finish(m,null,"§cArena teleport failed.");return;}
-            for(Player p:List.of(a,b)){apply(p,m.kits.get(p.getUniqueId()));stats(p);p.setLevel(0);p.setExp(0);p.setTotalExperience(0);}
-            m.stage=Stage.COUNTDOWN;countdown(m,epoch,setting("countdown-seconds",3,0,10));
+            if(error!=null||pair==null){failMatch(m,"arena search in "+m.biome,error==null?new IllegalStateException("No safe location found"):error);return;}
+            String step="teleport to arena";
+            try{
+                m.center=pair.first().clone().add(pair.second().toVector().subtract(pair.first().toVector()).multiply(.5));
+                Player a=Bukkit.getPlayer(m.a),b=Bukkit.getPlayer(m.b);
+                if(a==null||b==null){finish(m,null,"A player disconnected.");return;}
+                internalTeleport.add(m.a);internalTeleport.add(m.b);
+                boolean first,second;
+                try{
+                    first=a.teleport(pair.first(),PlayerTeleportEvent.TeleportCause.COMMAND);
+                    second=first&&b.teleport(pair.second(),PlayerTeleportEvent.TeleportCause.COMMAND);
+                }finally{internalTeleport.remove(m.a);internalTeleport.remove(m.b);}
+                if(!first||!second)throw new IllegalStateException("Teleport cancelled (first="+first+", second="+second+")");
+                for(Player p:List.of(a,b)){
+                    step="apply kit for "+p.getName();
+                    apply(p,m.kits.get(p.getUniqueId()));stats(p);p.setLevel(0);p.setExp(0);p.setTotalExperience(0);
+                    step="set view distance for "+p.getName();
+                    p.addScoreboardTag("minenight_tiertest");
+                    p.setViewDistance(setting("render-distance",12,2,32));
+                    step="initialize scoreboard for "+p.getName();
+                    if(!m.boards.containsKey(p.getUniqueId()))createBoard(m,p);
+                }
+                m.enteredArena=true;
+                m.stage=Stage.COUNTDOWN;countdown(m,epoch,setting("countdown-seconds",3,0,10));
+            }catch(Exception failure){failMatch(m,step,failure);}
         });
         Bukkit.getScheduler().runTaskLater(core(),()->{if(current(m)&&m.epoch==epoch&&m.stage==Stage.SEARCHING)finish(m,null,"Arena search timed out.");},20L*30);
     }
@@ -555,7 +586,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST) public void respawn(PlayerRespawnEvent event){
         Match m=matches.get(event.getPlayer().getUniqueId());
         if(m!=null&&m.backedUp&&m.center!=null)event.setRespawnLocation(m.center.clone());
-        else if(recovery.contains(event.getPlayer().getUniqueId()))Bukkit.getScheduler().runTaskLater(core(),()->{if(recover(event.getPlayer()))sendSpawn(event.getPlayer());},1);
+        else if(recovery.contains(event.getPlayer().getUniqueId()))Bukkit.getScheduler().runTaskLater(core(),()->{Player player=event.getPlayer();Location origin=YamlConfiguration.loadConfiguration(backup(player.getUniqueId())).getLocation("location");if(recover(player))returnToOrigin(player,origin);},1);
     }
     private void resolve(Match m,long epoch){
         if(!current(m)||m.epoch!=epoch||m.stage!=Stage.ACTIVE)return;
@@ -629,10 +660,21 @@ public final class TierTestModule extends MineNightModule implements Listener {
             }
             if(recovery.contains(id)){
                 if(p.isDead()){if(!stopping)Bukkit.getScheduler().runTask(core(),()->{if(p.isOnline()&&p.isDead())p.spigot().respawn();});}
-                else if(recover(p)&&!stopping)sendSpawn(p);
+                else if(recover(p)&&!stopping){
+                    if(winner!=null&&m.enteredArena)sendSpawn(p);
+                    else returnToOrigin(p,m.origins.get(id));
+                }
             }
         }
         m.boards.clear();
+    }
+    private void returnToOrigin(Player p,Location origin){
+        if(origin==null||origin.getWorld()==null)return;
+        Location here=p.getLocation();
+        if(Objects.equals(here.getWorld(),origin.getWorld())&&here.distanceSquared(origin)<1.0)return;
+        p.teleportAsync(origin,PlayerTeleportEvent.TeleportCause.COMMAND).whenComplete((ok,error)->{
+            if(error!=null||!Boolean.TRUE.equals(ok))getLogger().warning("[TierTest] Could not return "+p.getName()+" to the original location: "+error);
+        });
     }
     private void clearContainers(Match m){
         for(Location l:new ArrayList<>(m.containers.keySet())){
