@@ -112,6 +112,7 @@ public final class KitModule extends MineNightModule implements Listener {
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         if (getConfig().getBoolean("death.compact-drops", true) && !event.getKeepInventory() && !event.getDrops().isEmpty()) {
             Location location = player.getLocation().clone();
             World world = location.getWorld();
@@ -161,11 +162,12 @@ public final class KitModule extends MineNightModule implements Listener {
 
     @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
+        if (de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) return;
         if (!getConfig().getBoolean("death.auto-equip-kit-1", true)) return;
         UUID playerId = event.getPlayer().getUniqueId();
         Bukkit.getScheduler().runTaskLater(core(), () -> {
             Player player = Bukkit.getPlayer(playerId);
-            if (player == null || !player.isOnline() || player.isDead()) return;
+            if (player == null || !player.isOnline() || player.isDead() || de.minenight.tiertest.TierTestModule.locked(player)) return;
             if (kitExists(playerId, 1)) loadKit(player, playerId, 1);
         }, 1L);
     }
@@ -199,6 +201,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void recordKit(Player player, int number) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         String path = kitPath(player.getUniqueId(), number);
         PlayerInventory inv = player.getInventory();
         playerData.set(path + ".storage", copyItems(inv.getStorageContents()));
@@ -223,6 +226,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void loadKit(Player player, UUID owner, int number) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         String path = kitPath(owner, number);
         if (!kitExists(owner, number)) {
             player.sendMessage(PREFIX + "Kit " + number + " is empty. Right-click the chest in /kit to save one.");
@@ -407,6 +411,7 @@ public final class KitModule extends MineNightModule implements Listener {
             sender.sendMessage("Players only.");
             return true;
         }
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cKits are locked during a tier test."); return true; }
         String name = command.getName().toLowerCase();
         if (name.matches("k[1-9]")) {
             loadKit(player, player.getUniqueId(), Integer.parseInt(name.substring(1)));
@@ -498,6 +503,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     @EventHandler public void onInteract(PlayerInteractEvent event) {
+        if (de.minenight.tiertest.TierTestModule.locked(event.getPlayer())) return;
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
         if (!(event.getClickedBlock().getState() instanceof org.bukkit.block.ShulkerBox box)) return;
         if (!box.getPersistentDataContainer().has(shulkerKey, PersistentDataType.BYTE)) return;
@@ -552,6 +558,7 @@ public final class KitModule extends MineNightModule implements Listener {
     }
 
     private void refillPlayer(Player player, int kit) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         String path = kitPath(player.getUniqueId(), kit);
         if (!kitExists(player.getUniqueId(), kit)) {
             player.sendMessage(PREFIX + "Save kit " + kit + " first.");

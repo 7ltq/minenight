@@ -212,6 +212,14 @@ public final class TierKitRules {
         return item;
     }
 
+    public boolean allowsShulkerItem(ItemStack item) {
+        if (!present(item)) return true;
+        if (type != Type.ABOVE || !shulkerContents.contains(item.getType())) return false;
+        Budget budget = new Budget();
+        ItemStack result = clean(item, budget, true, "shulker");
+        return result != null && result.getAmount() == item.getAmount() && budget.changes.isEmpty();
+    }
+
     private boolean validPotion(Material material, PotionMeta potion) {
         if (potion.hasCustomEffects()) return false;
         if (potion.getBasePotionType() == null) return false;

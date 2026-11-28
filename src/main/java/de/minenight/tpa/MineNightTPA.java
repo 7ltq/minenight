@@ -74,6 +74,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
             send(sender, "players-only");
             return true;
         }
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cYou are in a tier test."); return true; }
         switch (command.getName().toLowerCase()) {
             case "tpa", "tpahere" -> sendRequest(player, args, command.getName().equalsIgnoreCase("tpahere"));
             case "tpaccept" -> answer(player, args, true);
@@ -129,6 +130,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
             send(sender, "not-online", "{player}", args[0]);
             return;
         }
+        if (de.minenight.tiertest.TierTestModule.locked(receiver)) { sender.sendMessage("§cThat player is in a tier test."); return; }
         if (receiver.getUniqueId().equals(sender.getUniqueId())) {
             send(sender, "self-request");
             return;
@@ -207,6 +209,7 @@ public final class MineNightTPA extends de.minenight.allinone.MineNightModule im
     }
 
     private void executeTeleport(Request request, Player requester, Player receiver) {
+        if (de.minenight.tiertest.TierTestModule.locked(requester) || de.minenight.tiertest.TierTestModule.locked(receiver)) { requester.sendMessage("§cTeleport unavailable during a tier test."); return; }
         Player traveler = request.here() ? receiver : requester;
         Player destination = request.here() ? requester : receiver;
         if (!traveler.isOnline() || !destination.isOnline()) {

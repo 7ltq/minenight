@@ -89,12 +89,14 @@ public final class MineNightRTPQueue extends de.minenight.allinone.MineNightModu
         if (!(sender instanceof Player player)) { say(sender,"player-only"); return true; }
         if (!player.hasPermission("minenightrtpq.use")) { say(player,"no-permission"); return true; }
         UUID id = player.getUniqueId();
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cYou are in a tier test."); return true; }
         if (opponent.containsKey(id)) { say(player,"matched","{opponent}",name(opponent.get(id))); return true; }
         if (preparing.contains(id)) { say(player,"preparing"); return true; }
         if (waiting.remove(id)) { say(player,"left"); return true; }
         if (getConfig().getBoolean("settings.require-practice-spawn", true) && practiceSpawn() == null) { say(player,"no-spawn"); return true; }
         waiting.add(id); say(player,"queued"); matchNext(); return true;
     }
+    public boolean isBusy(UUID id) { return waiting.contains(id) || reserved.contains(id) || preparing.contains(id) || opponent.containsKey(id) || respawning.contains(id); }
     private String name(UUID id) {
         Player player = Bukkit.getPlayer(id);
         return player == null ? "Offline" : player.getName();

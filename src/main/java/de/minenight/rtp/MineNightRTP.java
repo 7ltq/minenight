@@ -230,6 +230,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
     }
 
     private void startTeleport(Player player, String biome) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { player.sendMessage("§cYou are in a tier test."); return; }
         if (!inProgress.add(player.getUniqueId())) {
             reply(player, "already-searching");
             return;
@@ -265,6 +266,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
 
     private void search(Player player, World world, String biome, int remaining) {
         if (!player.isOnline() || !inProgress.contains(player.getUniqueId())) return;
+        if (de.minenight.tiertest.TierTestModule.locked(player)) { inProgress.remove(player.getUniqueId()); return; }
         if (remaining <= 0) {
             getLogger().warning("RTP found no safe location: player=" + player.getName() + ", biome=" + biome + ", world=" + world.getName());
             finish(player, "no-safe-location");
@@ -291,6 +293,7 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
             world.getChunkAtAsync(x >> 4, z >> 4, getConfig().getBoolean("teleport.generate-chunks", true))
                 .whenComplete((chunk, throwable) -> Bukkit.getScheduler().runTask(core(), () -> {
                     if (!player.isOnline() || !inProgress.contains(player.getUniqueId())) return;
+                    if (de.minenight.tiertest.TierTestModule.locked(player)) { inProgress.remove(player.getUniqueId()); return; }
                     if (throwable != null || chunk == null) {
                         if (remaining == 1) {
                             if (throwable != null) {
@@ -331,6 +334,69 @@ public final class MineNightRTP extends de.minenight.allinone.MineNightModule im
                     "RTP search failed: player=" + player.getName() + ", biome=" + biome + ", world=" + world.getName(), exception);
             finish(player, "teleport-failed");
         }
+    }
+
+    public record TierPair(Location first, Location second) {}
+
+    public boolean isSearching(UUID player) { return inProgress.contains(player); }
+
+    public java.util.concurrent.CompletableFuture<TierPair> findTierPair(String biome, int distance, java.util.function.Predicate<TierPair> available, java.util.function.BooleanSupplier valid) {
+        var result = new java.util.concurrent.CompletableFuture<TierPair>();
+        ConfigurationSection destination = getConfig().getConfigurationSection("destinations." + biome);
+        if (destination == null || !destination.getBoolean("enabled", true)) {
+            result.completeExceptionally(new IllegalStateException("RTP destination disabled"));
+            return result;
+        }
+        World world = Bukkit.getWorld(destination.getString("world", ""));
+        if (world == null) world = Bukkit.getWorld(GENERATED_WORLD_NAMES.getOrDefault(biome, ""));
+        if (world == null || world.getEnvironment() != World.Environment.NORMAL) {
+            result.completeExceptionally(new IllegalStateException("RTP world not loaded"));
+            return result;
+        }
+        findTierPair(world, destination, Math.max(1, distance), Math.max(1, Math.min(100, getConfig().getInt("teleport.max-attempts", 48))), available, valid, result);
+        return result;
+    }
+
+    private void findTierPair(World world, ConfigurationSection destination, int distance, int remaining, java.util.function.Predicate<TierPair> available, java.util.function.BooleanSupplier valid, java.util.concurrent.CompletableFuture<TierPair> result) {
+        if (result.isDone()) return;
+        if (!valid.getAsBoolean() || remaining <= 0) {
+            result.completeExceptionally(new IllegalStateException("No safe tier-test location"));
+            return;
+        }
+        int min = Math.max(0, destination.getInt("min-radius", getConfig().getInt("teleport.min-radius", 500)));
+        int max = Math.max(min + 1, destination.getInt("max-radius", getConfig().getInt("teleport.max-radius", 5000)));
+        var random = ThreadLocalRandom.current();
+        double theta = random.nextDouble(Math.PI * 2);
+        double radius = Math.sqrt(random.nextDouble((double) min * min, (double) max * max));
+        int x = destination.getInt("center-x", world.getSpawnLocation().getBlockX()) + (int) Math.round(radius * Math.cos(theta));
+        int z = destination.getInt("center-z", world.getSpawnLocation().getBlockZ()) + (int) Math.round(radius * Math.sin(theta));
+        boolean east = random.nextBoolean();
+        int bx = x + (east ? distance : 0), bz = z + (east ? 0 : distance);
+        boolean generate = getConfig().getBoolean("teleport.generate-chunks", true);
+        try {
+            var a = world.getChunkAtAsync(x >> 4, z >> 4, generate);
+            var b = world.getChunkAtAsync(bx >> 4, bz >> 4, generate);
+            java.util.concurrent.CompletableFuture.allOf(a, b).whenComplete((ignored, error) -> {
+                if (!core().isEnabled()) return;
+                Bukkit.getScheduler().runTask(core(), () -> {
+                    if (result.isDone() || !valid.getAsBoolean()) { result.cancel(false); return; }
+                    if (error == null && a.getNow(null) != null && b.getNow(null) != null && world.isChunkLoaded(x >> 4, z >> 4) && world.isChunkLoaded(bx >> 4, bz >> 4)) {
+                        Location first = new Location(world, x + .5, world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1, z + .5);
+                        Location second = new Location(world, bx + .5, world.getHighestBlockYAt(bx, bz, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1, bz + .5);
+                        if (Math.abs(first.getY() - second.getY()) <= 3 && isSafe(first) && isSafe(second)
+                                && first.getBlock().getType().isAir() && second.getBlock().getType().isAir()
+                                && first.getBlock().getRelative(0,1,0).getType().isAir() && second.getBlock().getRelative(0,1,0).getType().isAir()
+                                && first.getBlock().getBiome().equals(second.getBlock().getBiome())) {
+                            first.setDirection(second.toVector().subtract(first.toVector()));
+                            second.setDirection(first.toVector().subtract(second.toVector()));
+                            TierPair pair = new TierPair(first, second);
+                            if (available.test(pair)) { result.complete(pair); return; }
+                        }
+                    }
+                    findTierPair(world, destination, distance, remaining - 1, available, valid, result);
+                });
+            });
+        } catch (RuntimeException error) { result.completeExceptionally(error); }
     }
 
     private boolean isSafe(Location loc) {

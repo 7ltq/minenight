@@ -74,6 +74,7 @@ public final class MineNightPlayerOptimizer extends MineNightModule implements L
     }
 
     private void apply(Player player) {
+        if (de.minenight.tiertest.TierTestModule.locked(player)) return;
         if (activeDistance < 0 || !getConfig().getBoolean("enabled", true)) return;
         int current = player.getViewDistance();
         originalViewDistances.putIfAbsent(player.getUniqueId(), current);
@@ -85,6 +86,7 @@ public final class MineNightPlayerOptimizer extends MineNightModule implements L
 
     private void restoreAll() {
         for (Player player : Bukkit.getOnlinePlayers()) {
+            if (de.minenight.tiertest.TierTestModule.locked(player)) continue;
             Integer original = originalViewDistances.get(player.getUniqueId());
             if (original != null && original >= 2 && player.getViewDistance() != original) {
                 player.setViewDistance(original);

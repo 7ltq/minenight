@@ -59,6 +59,12 @@ public final class TierRoundScore {
         return true;
     }
 
+    public boolean restartActive(long token) {
+        if (phase != Phase.ACTIVE || token != attempt) return false;
+        phase = Phase.WAITING;
+        return true;
+    }
+
     public UUID winner() {
         if (first >= target) return firstPlayer;
         if (second >= target) return secondPlayer;

@@ -34,6 +34,7 @@ public final class MineNightAllInOne extends JavaPlugin {
         register("stafftools", new StaffToolsModule());
         register("restart", new RestartModule());
         register("screenshare", new ScreenshareModule());
+        register("tiertest", new de.minenight.tiertest.TierTestModule());
         if (getServer().getPluginManager().isPluginEnabled("WorldEdit") ||
                 getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit")) {
             try {

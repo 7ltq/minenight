@@ -158,7 +158,7 @@ public final class MineNightUtility extends MineNightModule implements Listener 
         if (cmd.equals("back")) {
             if (!(sender instanceof Player player)) { sender.sendMessage("Player only."); return true; }
             if (!sender.hasPermission("minenight.back")) { sender.sendMessage("You do not have permission."); return true; }
-            if (player.getScoreboardTags().contains("minenight_rtpq_duel")) { player.sendMessage(mm.deserialize("<#6685E8>You cannot use /back during a duel.")); return true; }
+            if (de.minenight.tiertest.TierTestModule.locked(player) || player.getScoreboardTags().contains("minenight_rtpq_duel")) { player.sendMessage(mm.deserialize("<#6685E8>You cannot use /back during a duel.")); return true; }
             UUID playerId = player.getUniqueId();
             Location location = resolveSavedLocation(playerId);
             if (location == null || location.getWorld() == null) {

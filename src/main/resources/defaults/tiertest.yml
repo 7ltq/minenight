@@ -29,3 +29,27 @@ rules:
       - OBSIDIAN
       - ENDER_PEARL
       - EXPERIENCE_BOTTLE
+
+settings:
+  invitation-seconds: 60
+  setup-seconds: 180
+  countdown-seconds: 3
+  round-review-seconds: 3
+  final-review-seconds: 8
+  reconnect-seconds: 30
+  spawn-distance: 15
+  render-distance: 12
+  arena-radius: 150
+  rerun-seconds: 8
+messages:
+  prefix: '§8[§9MineNight§8] §7'
+  blocked: '§cThat action is unavailable during a tier test.'
+  invite-expired: 'Tier test invitation expired.'
+  match-aborted: 'Tier test cancelled. Your original inventory will be restored.'
+gui:
+  title: '§9Tier Test'
+  below-icon: IRON_SWORD
+  above-icon: DIAMOND_SWORD
+  premade-icon: ENDER_CHEST
+sounds:
+  winner: UI_TOAST_CHALLENGE_COMPLETE
