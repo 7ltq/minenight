@@ -35,6 +35,12 @@ public final class TierRoundScoreTest {
         check(match.phase() == TierRoundScore.Phase.FINISHED);
         check(a.equals(match.winner()));
         check(!match.rerun(repeat));
+        TierRoundScore saved=TierRoundScore.restored(a,b,4,2,1,4);
+        check(saved.score().first()==2&&saved.score().second()==1&&saved.target()==4);
+        long resumed=saved.begin();
+        check(saved.round()==4&&saved.resolve(resumed,false,true));
+        check(saved.nextWaitingRound()==5&&saved.finalizeRound(resumed));
+        check(saved.score().first()==3&&saved.score().second()==1);
         System.out.println("TierRoundScore regression checks passed");
     }
 }

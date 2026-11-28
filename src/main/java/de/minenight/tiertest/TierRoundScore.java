@@ -24,6 +24,15 @@ public final class TierRoundScore {
         this.target = target;
     }
 
+    public static TierRoundScore restored(UUID first, UUID second, int target, int firstWins, int secondWins, long round) {
+        if(firstWins<0||secondWins<0||firstWins>=target||secondWins>=target||round<1)throw new IllegalArgumentException("Invalid paused score");
+        TierRoundScore score=new TierRoundScore(first,second,target);
+        score.first=firstWins;score.second=secondWins;score.round=round;score.before=score.score();
+        return score;
+    }
+    public int target(){return target;}
+    public long nextWaitingRound(){return Math.max(1,round+(phase==Phase.REVIEW&&!score().equals(before)?1:0));}
+
     public long begin() {
         if (phase != Phase.WAITING) throw new IllegalStateException("Round is not waiting");
         if (round == 0) round = 1;

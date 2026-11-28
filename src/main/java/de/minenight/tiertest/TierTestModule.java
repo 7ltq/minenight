@@ -30,7 +30,7 @@ import org.bukkit.scoreboard.*;
 import net.kyori.adventure.text.Component;
 
 public final class TierTestModule extends MineNightModule implements Listener {
-    private enum Stage { TYPE, KIT, BIOME, READY, SEARCHING, COUNTDOWN, ACTIVE, REVIEW, PAUSED, END }
+    private enum Stage { TYPE, KIT, BIOME, READY, SEARCHING, COUNTDOWN, ACTIVE, REVIEW, PAUSED, SUSPENDED, END }
     private static final List<String> BIOMES = List.of("plain", "desert", "snow", "mushroom", "badlands");
     private static final List<Material> ICONS = List.of(Material.GRASS_BLOCK, Material.SAND, Material.SNOW_BLOCK, Material.MYCELIUM, Material.RED_SAND);
     private final Map<UUID, Invite> invites = new HashMap<>();
@@ -46,6 +46,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private final Set<UUID> recovery = new HashSet<>();
     private final Set<UUID> restoring = new HashSet<>();
     private File backups;
+    private File pauseDirectory;
+    private final Map<UUID, Scoreboard> pausedBaseBoards = new HashMap<>();
     private File premadeFile;
     private YamlConfiguration premades;
     private boolean stopping;
@@ -68,6 +70,9 @@ public final class TierTestModule extends MineNightModule implements Listener {
         final Map<Location, UUID> regearBoxes = new HashMap<>();
         final Map<UUID, UUID> droppedBy = new HashMap<>();
         final UUID regearId=UUID.randomUUID();
+        final Set<UUID> pauseVotes=new HashSet<>(), resumeVotes=new HashSet<>();
+        long pauseVoteUntil,resumeVoteUntil;
+        boolean resuming;
         Stage stage = Stage.TYPE;
         TierKitRules.Type type;
         String biome;
@@ -80,7 +85,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
         Match(UUID a, UUID b) { this.a = a; this.b = b; }
         List<UUID> ids() { return List.of(a, b); }
         UUID other(UUID id) { return a.equals(id) ? b : a; }
-        boolean playing() { return backedUp && stage != Stage.END; }
+        boolean playing() { return backedUp && stage != Stage.END && stage != Stage.SUSPENDED; }
     }
 
     private static final class Draft {
@@ -130,13 +135,16 @@ public final class TierTestModule extends MineNightModule implements Listener {
     public static boolean locked(Player player) {
         MineNightAllInOne plugin = MineNightAllInOne.instance();
         if (plugin == null || !(plugin.module("tiertest") instanceof TierTestModule module)) return false;
-        return module.recovery.contains(player.getUniqueId()) || module.restoring.contains(player.getUniqueId()) || module.matches.containsKey(player.getUniqueId());
+        Match match=module.matches.get(player.getUniqueId());
+        return module.recovery.contains(player.getUniqueId()) || module.restoring.contains(player.getUniqueId()) || (match!=null&&match.stage!=Stage.SUSPENDED);
     }
 
     @Override public void onEnable() {
         saveDefaultConfig();
         backups = new File(getDataFolder(), "recovery");
         if (!backups.isDirectory() && !backups.mkdirs()) throw new IllegalStateException("Cannot create tier-test recovery directory");
+        pauseDirectory=new File(getDataFolder(),"paused-matches");
+        if(!pauseDirectory.isDirectory()&&!pauseDirectory.mkdirs())throw new IllegalStateException("Cannot create paused match directory");
         premadeFile = new File(getDataFolder(), "premades.yml");
         premades = YamlConfiguration.loadConfiguration(premadeFile);
         File[] pending = backups.listFiles((dir, name) -> name.endsWith(".yml"));
@@ -144,13 +152,17 @@ public final class TierTestModule extends MineNightModule implements Listener {
             try { recovery.add(UUID.fromString(file.getName().substring(0, file.getName().length() - 4))); }
             catch (IllegalArgumentException ignored) {}
         }
+        loadPausedMatches();
         for (String name : List.of("tiertest", "below", "above", "rerun")) {
             PluginCommand command = Objects.requireNonNull(getCommand(name));
             command.setExecutor(this);
             command.setTabCompleter(this);
         }
         Bukkit.getPluginManager().registerEvents(this, core());
-        for (Player p : Bukkit.getOnlinePlayers()) if (recovery.contains(p.getUniqueId())) recover(p);
+        for(Player p:Bukkit.getOnlinePlayers()){
+            if(recovery.contains(p.getUniqueId()))recover(p);
+            Match m=matches.get(p.getUniqueId());if(m!=null&&m.stage==Stage.SUSPENDED&&!recovery.contains(p.getUniqueId()))showPausedBoard(m,p);
+        }
     }
 
     private int setting(String key, int fallback, int min, int max) {
@@ -160,7 +172,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void say(Player player, String message) { player.sendMessage(msg("prefix", "§8[§9MineNight§8] §7") + message); }
     private void tell(Match m, String message) { for (UUID id : m.ids()) { Player p = Bukkit.getPlayer(id); if (p != null) say(p, message); } }
     private boolean current(Match m) { return !stopping && matches.get(m.a) == m && matches.get(m.b) == m && m.stage != Stage.END; }
-    private boolean available(Player p) {
+    private boolean available(Player p) {return p!=null&&!matches.containsKey(p.getUniqueId())&&availableForResume(p);}
+    private boolean availableForResume(Player p) {
         if (p == null || !p.isOnline() || p.isDead() || locked(p) || p.getGameMode() != GameMode.SURVIVAL) return false;
         if (core().module("rtpqueue") instanceof MineNightRTPQueue queue && queue.isBusy(p.getUniqueId())) return false;
         return !(core().module("rtp") instanceof MineNightRTP rtp && rtp.isSearching(p.getUniqueId()));
@@ -299,8 +312,13 @@ public final class TierTestModule extends MineNightModule implements Listener {
             say(p,heads?"Player head icons enabled.":"Name tag icons enabled (head rendering fallback).");
             return true;
         }
+        if(args.length==1&&args[0].equalsIgnoreCase("pause")){requestPause(p,m);return true;}
+        if(args.length>=1&&args[0].equalsIgnoreCase("resume")){
+            if(args.length>2){say(p,"Usage: /tiertest resume [player]");return true;}
+            requestResume(p,m,args.length==2?args[1]:null);return true;
+        }
         if(args.length>0 && args[0].equalsIgnoreCase("leave")) {
-            if(m!=null) finish(m,m.backedUp?m.other(id):null,"Player left the tier test.");
+            if(m!=null) finish(m,m.backedUp||m.stage==Stage.SUSPENDED?m.other(id):null,"Player left the tier test.");
             else { invites.values().removeIf(i->i.from.equals(id)||i.to.equals(id)); say(p,"No active tier test."); }
             return true;
         }
@@ -319,11 +337,11 @@ public final class TierTestModule extends MineNightModule implements Listener {
             matches.put(created.a,created);matches.put(created.b,created);
             invites.values().removeIf(v->created.ids().contains(v.from)||created.ids().contains(v.to));
             openBoth(created);
-            Bukkit.getScheduler().runTaskLater(core(),()->{if(current(created)&&!created.backedUp)finish(created,null,"Tier test setup expired.");},20L*setting("setup-seconds",180,30,600));
+            Bukkit.getScheduler().runTaskLater(core(),()->{if(current(created)&&created.score==null&&!created.backedUp)finish(created,null,"Tier test setup expired.");},20L*setting("setup-seconds",180,30,600));
             return true;
         }
         if(args.length!=0) return false;
-        if(m!=null) { if(!m.backedUp) resumeNow(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
+        if(m!=null) { if(m.stage==Stage.SUSPENDED)say(p,"§eMatch paused. /tiertest resume "+name(m.other(id))+" to continue."); else if(!m.backedUp) resumeNow(p,m); else say(p,"Tier test in progress. /tiertest leave to forfeit."); }
         else if(available(p)) openOpponents(p,0);
         else say(p,"You are not available for a tier test.");
         return true;
@@ -331,7 +349,8 @@ public final class TierTestModule extends MineNightModule implements Listener {
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> choices=List.of();
         if(command.getName().equals("tiertest")) {
-            if(args.length==1) choices=List.of("accept","decline","leave","check","icons");
+            if(args.length==1) choices=List.of("accept","decline","leave","check","icons","pause","resume");
+            else if(args.length==2&&args[0].equalsIgnoreCase("resume")&&sender instanceof Player p&&matches.containsKey(p.getUniqueId()))choices=List.of(name(matches.get(p.getUniqueId()).other(p.getUniqueId())));
             else if(args.length==2&&args[0].equalsIgnoreCase("check"))choices=List.of("below","above");
             else if(args.length==3&&args[0].equalsIgnoreCase("check"))choices=List.of("1","2","3","4","5","6","7","8","9");
             else if(args.length==2&&sender instanceof Player p&&invites.containsKey(p.getUniqueId()))choices=List.of(name(invites.get(p.getUniqueId()).from));
@@ -741,7 +760,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     private void updateBoard(Match m){
         if(m.score==null)return;
-        String[] lines={"§7Tier Test","§b"+typeName(m.type),"§0","§f"+name(m.a)+": §b"+m.score.score().first(),"§f"+name(m.b)+": §b"+m.score.score().second(),"§1","§7First to: §f"+wins(m.type),"§7Biome: §f"+biomeName(m.biome),"§2","§9minenight.de"};
+        String[] lines={m.stage==Stage.SUSPENDED?"§e§lPAUSED":"§7Tier Test","§b"+typeName(m.type),"§0","§f"+name(m.a)+": §b"+m.score.score().first(),"§f"+name(m.b)+": §b"+m.score.score().second(),"§1","§7First to: §f"+m.score.target(),"§7Biome: §f"+biomeName(m.biome),"§2","§9minenight.de"};
         for(Objective objective:m.boards.values()){
             Scoreboard board=objective.getScoreboard();if(board==null)continue;
             Set<String> keep=new HashSet<>(Arrays.asList(lines));
@@ -754,7 +773,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private Match area(Location l){for(Match m:matches.values())if(m.playing()&&inside(m,l))return m;return null;}
     private boolean free(Match m,MineNightRTP.TierPair pair){
         Location center=pair.first().clone().add(pair.second().toVector().subtract(pair.first().toVector()).multiply(.5));
-        for(Match other:new HashSet<>(matches.values()))if(other!=m&&other.center!=null&&Objects.equals(other.center.getWorld(),center.getWorld())&&Math.abs(other.center.getX()-center.getX())<=radius()*2+32&&Math.abs(other.center.getZ()-center.getZ())<=radius()*2+32)return false;
+        for(Match other:new HashSet<>(matches.values()))if(other!=m&&other.playing()&&other.center!=null&&Objects.equals(other.center.getWorld(),center.getWorld())&&Math.abs(other.center.getX()-center.getX())<=radius()*2+32&&Math.abs(other.center.getZ()-center.getZ())<=radius()*2+32)return false;
         for(Player p:center.getWorld().getPlayers())if(!m.ids().contains(p.getUniqueId())&&Math.abs(p.getLocation().getX()-center.getX())<=radius()+32&&Math.abs(p.getLocation().getZ()-center.getZ())<=radius()+32)return false;
         return true;
     }
@@ -794,6 +813,7 @@ public final class TierTestModule extends MineNightModule implements Listener {
                     step="initialize scoreboard for "+p.getName();
                     if(!m.boards.containsKey(p.getUniqueId()))createBoard(m,p);
                 }
+                if(m.resuming){Files.deleteIfExists(pauseFile(m).toPath());m.resuming=false;}
                 m.enteredArena=true;
                 m.stage=Stage.COUNTDOWN;countdown(m,epoch,setting("countdown-seconds",3,0,10));
             }catch(Exception failure){failMatch(m,step,failure);}
@@ -863,6 +883,107 @@ public final class TierTestModule extends MineNightModule implements Listener {
         m.rerunBy=id;m.rerunUntil=now+1000L*setting("rerun-seconds",8,2,30);
         tell(m,p.getName()+" requested a rerun. Opponent: /rerun this round to accept.");
     }
+    private File pauseFile(Match m){return new File(pauseDirectory,m.a+".yml");}
+    private void savePaused(Match m) throws IOException {
+        YamlConfiguration data=new YamlConfiguration();
+        data.set("first",m.a.toString());data.set("second",m.b.toString());
+        data.set("type",m.type.key());data.set("biome",m.biome);
+        data.set("target",m.score.target());data.set("first-score",m.score.score().first());data.set("second-score",m.score.score().second());
+        data.set("round",m.score.nextWaitingRound());
+        for(UUID id:m.ids()){writeKit(data,"kits."+id,m.kits.get(id));data.set("names."+id,m.kitNames.get(id));}
+        atomicSave(data,pauseFile(m));
+    }
+    private Match readPaused(File file) throws Exception {
+        YamlConfiguration data=new YamlConfiguration();data.load(file);
+        UUID a=UUID.fromString(data.getString("first","")),b=UUID.fromString(data.getString("second",""));
+        if(!file.getName().equals(a+".yml"))throw new IOException("Invalid paused match filename");
+        Match m=new Match(a,b);
+        m.type=TierKitRules.Type.valueOf(data.getString("type","").toUpperCase(Locale.ROOT));
+        m.biome=data.getString("biome","");
+        if(!BIOMES.contains(m.biome))throw new IOException("Invalid paused biome");
+        m.score=TierRoundScore.restored(a,b,data.getInt("target"),data.getInt("first-score"),data.getInt("second-score"),data.getLong("round"));
+        for(UUID id:m.ids()){
+            String path="kits."+id;
+            if(!data.isList(path+".storage")||!data.isList(path+".armor")||!data.isList(path+".ender"))throw new IOException("Invalid paused kit");
+            m.kits.put(id,readKit(data,path));m.kitNames.put(id,data.getString("names."+id,"Saved kit"));
+        }
+        m.stage=Stage.SUSPENDED;return m;
+    }
+    private void loadPausedMatches(){
+        File[] files=pauseDirectory.listFiles((dir,n)->n.endsWith(".yml"));
+        if(files==null)return;
+        for(File file:files)try{
+            Match m=readPaused(file);
+            if(matches.containsKey(m.a)||matches.containsKey(m.b))throw new IOException("Conflicting paused matches");
+            matches.put(m.a,m);matches.put(m.b,m);
+        }catch(Exception error){getLogger().log(java.util.logging.Level.SEVERE,"Cannot load paused tier test "+file.getName(),error);}
+    }
+    private void showPausedBoard(Match m,Player p){
+        if(m.stage!=Stage.SUSPENDED||recovery.contains(p.getUniqueId()))return;
+        UUID id=p.getUniqueId();
+        Objective existing=m.boards.get(id);
+        if(existing!=null&&existing.getScoreboard()==p.getScoreboard()){updateBoard(m);return;}
+        pausedBaseBoards.putIfAbsent(id,p.getScoreboard());
+        createBoard(m,p);
+    }
+    private void removePausedBoard(Match m,Player p){
+        UUID id=p.getUniqueId();Scoreboard original=pausedBaseBoards.remove(id);
+        Objective board=m.boards.remove(id);
+        if(original!=null&&board!=null&&p.getScoreboard()==board.getScoreboard())p.setScoreboard(original);
+    }
+    private void requestPause(Player p,Match m){
+        if(m==null||!m.backedUp||m.resuming||m.stage==Stage.PAUSED||m.stage==Stage.SUSPENDED||m.score==null||m.score.winner()!=null||m.stage==Stage.ACTIVE&&m.deathScheduled){
+            say(p,"§cYou can pause an unfinished tier test during a round or between rounds.");return;
+        }
+        if(practiceSpawn()==null){say(p,"§cPractice lobby is unavailable.");return;}
+        for(UUID id:m.ids()){Player player=Bukkit.getPlayer(id);if(player==null||player.isDead()){say(p,"Both players must be online and alive.");return;}}
+        long now=System.currentTimeMillis();
+        if(now>m.pauseVoteUntil){m.pauseVotes.clear();m.pauseVoteUntil=now+60000;}
+        if(!m.pauseVotes.add(p.getUniqueId())){say(p,"Waiting for your opponent to use /tiertest pause.");return;}
+        if(m.pauseVotes.size()<2){tell(m,p.getName()+" requested a pause. Both players must use /tiertest pause within 60 seconds.");return;}
+        try{savePaused(m);}catch(IOException error){m.pauseVotes.clear();getLogger().log(java.util.logging.Level.SEVERE,"Could not persist tier test pause",error);tell(m,"§cPause failed. The match will continue.");return;}
+        if(m.score.phase()==TierRoundScore.Phase.ACTIVE)m.score.restartActive(m.token);
+        else if(m.score.phase()==TierRoundScore.Phase.REVIEW)m.score.finalizeRound(m.token);
+        parkMatch(m);
+    }
+    private void parkMatch(Match m){
+        m.stage=Stage.SUSPENDED;m.backedUp=false;m.resuming=false;++m.epoch;
+        m.pauseVotes.clear();m.resumeVotes.clear();m.absent.clear();m.dead.clear();m.deathScheduled=false;
+        clearContainers(m);m.center=null;
+        m.boards.clear();
+        for(UUID id:m.ids()){
+            Player p=Bukkit.getPlayer(id);if(p==null)continue;
+            p.closeInventory();
+            if(recovery.contains(id)&&!recover(p))continue;
+            showPausedBoard(m,p);if(!stopping)sendSpawn(p);
+        }
+        if(!stopping)tell(m,"§eTier test paused at "+m.score.score().first()+" - "+m.score.score().second()+". Both players use /tiertest resume to continue.");
+    }
+    private void requestResume(Player p,Match m,String opponent){
+        if(m==null||m.stage!=Stage.SUSPENDED){say(p,"You have no paused tier test.");return;}
+        if(opponent!=null&&!name(m.other(p.getUniqueId())).equalsIgnoreCase(opponent)){say(p,"Your paused opponent is "+name(m.other(p.getUniqueId()))+".");return;}
+        for(UUID id:m.ids())if(!availableForResume(Bukkit.getPlayer(id))){say(p,"Both players must be online, in survival mode and not busy.");return;}
+        long now=System.currentTimeMillis();
+        if(now>m.resumeVoteUntil){m.resumeVotes.clear();m.resumeVoteUntil=now+60000;}
+        if(!m.resumeVotes.add(p.getUniqueId())){say(p,"Waiting for your opponent to resume.");return;}
+        if(m.resumeVotes.size()<2){tell(m,p.getName()+" wants to resume. Both players use /tiertest resume within 60 seconds.");return;}
+        try{
+            m.origins.clear();
+            for(UUID id:m.ids()){
+                Player player=Objects.requireNonNull(Bukkit.getPlayer(id));player.closeInventory();
+                ItemStack cursor=player.getItemOnCursor();
+                if(cursor!=null&&!cursor.getType().isAir()&&cursor.getAmount()>0)throw new IllegalStateException(player.getName()+" has an item on the cursor");
+            }
+            for(UUID id:m.ids()){
+                Player player=Objects.requireNonNull(Bukkit.getPlayer(id));removePausedBoard(m,player);
+                m.origins.put(id,player.getLocation().clone());saveBackup(player);
+            }
+            m.resuming=true;m.backedUp=true;m.resumeVotes.clear();startRound(m);
+        }catch(Exception error){
+            getLogger().log(java.util.logging.Level.WARNING,"Could not resume tier test",error);
+            parkMatch(m);tell(m,"§cResume failed. Your saved match is still paused.");
+        }
+    }
     private void pause(Match m,UUID id){
         if(!current(m))return;
         if(!m.backedUp){finish(m,null,"Player disconnected.");return;}
@@ -882,10 +1003,17 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     @EventHandler public void quit(PlayerQuitEvent event){
         Player p=event.getPlayer();UUID id=p.getUniqueId();invites.values().removeIf(i->i.from.equals(id)||i.to.equals(id));
-        Match m=matches.get(id);if(m!=null){pause(m,id);if(m.backedUp&&recovery.contains(id))p.setViewDistance(Math.max(2,Math.min(32,YamlConfiguration.loadConfiguration(backup(id)).getInt("view-distance",8))));}
+        Match m=matches.get(id);if(m!=null&&m.stage==Stage.SUSPENDED){m.resumeVotes.clear();removePausedBoard(m,p);return;}
+        if(m!=null&&m.resuming){parkMatch(m);return;}
+        if(m!=null){pause(m,id);if(m.backedUp&&recovery.contains(id))p.setViewDistance(Math.max(2,Math.min(32,YamlConfiguration.loadConfiguration(backup(id)).getInt("view-distance",8))));}
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void join(PlayerJoinEvent event){
         Player p=event.getPlayer();UUID id=p.getUniqueId();Match m=matches.get(id);
+        if(m!=null&&m.stage==Stage.SUSPENDED){
+            if(recovery.contains(id))recover(p);
+            if(!recovery.contains(id))showPausedBoard(m,p);
+            say(p,"§ePaused tier test against "+name(m.other(id))+". /tiertest resume to continue.");return;
+        }
         if(m!=null&&m.stage==Stage.PAUSED&&m.absent.remove(id)){
             p.setViewDistance(setting("render-distance",12,2,32));createBoard(m,p);
             if(m.absent.isEmpty())Bukkit.getScheduler().runTaskLater(core(),()->{if(current(m)&&m.stage==Stage.PAUSED&&m.absent.isEmpty())startRound(m);},2);
@@ -912,6 +1040,12 @@ public final class TierTestModule extends MineNightModule implements Listener {
     private void sendSpawn(Player p){if(core().module("spawn") instanceof MineNightPracticeSpawn spawn)spawn.sendSpawn(p);}
     private void finish(Match m,UUID winner,String reason){
         if(m.stage==Stage.END)return;
+        if(m.resuming){parkMatch(m);if(reason!=null)tell(m,reason);return;}
+        if(m.stage==Stage.SUSPENDED){
+            if(stopping)return;
+            try{Files.deleteIfExists(pauseFile(m).toPath());}catch(IOException error){tell(m,"§cCould not remove paused match. Contact staff.");return;}
+            for(UUID id:m.ids()){Player player=Bukkit.getPlayer(id);if(player!=null)removePausedBoard(m,player);}
+        }
         m.stage=Stage.END;++m.epoch;clearContainers(m);
         if(winner!=null&&!m.resultShown)announceResult(m,winner);
         for(UUID id:m.ids()){
@@ -949,9 +1083,13 @@ public final class TierTestModule extends MineNightModule implements Listener {
     }
     @Override public void onDisable(){
         stopping=true;
-        for(Match m:new HashSet<>(matches.values()))finish(m,null,"Tier test stopped.");
+        for(Match m:new HashSet<>(matches.values())){
+            if(m.resuming)parkMatch(m);
+            if(m.stage==Stage.SUSPENDED){for(UUID id:m.ids()){Player p=Bukkit.getPlayer(id);if(p!=null)removePausedBoard(m,p);}}
+            else finish(m,null,"Tier test stopped.");
+        }
         for(Player p:Bukkit.getOnlinePlayers())if(recovery.contains(p.getUniqueId())&&!p.isDead())recover(p);
-        invites.clear();matches.clear();roundDrops.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
+        invites.clear();matches.clear();roundDrops.clear();pausedBaseBoards.clear();originalBoards.clear();suspendedMenus.clear();openingMenus.clear();pendingReopen.clear();
     }
 
     private boolean frozen(Player p){Match m=matches.get(p.getUniqueId());return (m!=null&&m.backedUp&&m.stage!=Stage.ACTIVE)||(m==null&&recovery.contains(p.getUniqueId()));}
